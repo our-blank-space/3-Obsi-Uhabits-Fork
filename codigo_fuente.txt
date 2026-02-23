@@ -1,0 +1,2723 @@
+
+
+===== main.ts =====
+
+import { Plugin, WorkspaceLeaf } from "obsidian";
+import { HabitStorage } from "./src/core/storage";
+import { HomeView, HABIT_VIEW_TYPE } from "./src/ui/views/HomeView";
+import { HabitSettingsTab } from "./src/ui/settings";
+
+export default class HabitTrackerPlugin extends Plugin {
+	storage!: HabitStorage;
+
+	async onload() {
+		console.log("Cargando Habit Loop Tracker...");
+
+		// 1. Cargar Storage
+		this.storage = new HabitStorage(this);
+		await this.storage.load();
+
+		// 2. Registrar Vista
+		this.registerView(
+			HABIT_VIEW_TYPE,
+			(leaf) => new HomeView(leaf, this.storage)
+		);
+
+		// 3. Ribbon
+		this.addRibbonIcon("check-circle-2", "Habit Tracker", () => {
+			this.activateView();
+		});
+
+		// 4. Comandos
+		this.addCommand({
+			id: "open-habit-tracker",
+			name: "Abrir Habit Tracker",
+			callback: () => this.activateView()
+		});
+
+		// 5. Configuración
+		this.addSettingTab(new HabitSettingsTab(this.app, this, this.storage));
+	}
+
+	async onunload() {
+		this.app.workspace.detachLeavesOfType(HABIT_VIEW_TYPE);
+	}
+
+	async activateView() {
+		const { workspace } = this.app;
+		let leaf: WorkspaceLeaf | null = null;
+		const leaves = workspace.getLeavesOfType(HABIT_VIEW_TYPE);
+
+		if (leaves.length > 0) {
+			leaf = leaves[0];
+		} else {
+			leaf = workspace.getRightLeaf(false);
+			if (leaf) await leaf.setViewState({ type: HABIT_VIEW_TYPE, active: true });
+		}
+
+		if (leaf) workspace.revealLeaf(leaf);
+	}
+}
+
+===== manifest.json =====
+
+{
+	"id": "obsidian-habit-loop",
+	"name": "Habit Loop Tracker",
+	"version": "1.5.0",
+	"minAppVersion": "1.5.0",
+	"description": "Tracker de hábitos avanzado estilo 'Loop'. Incluye algoritmo de puntuación (Score), registro de ánimo y energía, gráficos visuales (Chart.js) e integración con notas diarias.",
+	"author": "Andres Vega",
+	"authorUrl": "https://github.com/andresvega/obsidian-habit-loop",
+	"fundingUrl": "https://ko-fi.com/andresvega",
+	"isDesktopOnly": false
+}
+
+===== styles.css =====
+
+/* ESTILOS BASE */
+.habit-tracker-root {
+    display: flex; flex-direction: column; height: 100%; padding: 16px;
+    background-color: var(--background-primary);
+    font-family: var(--font-ui);
+}
+
+/* HEADER Y BOTONES */
+.habit-tracker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-shrink: 0; }
+.ht-btn { cursor: pointer; font-size: 0.9em; padding: 6px 12px; border-radius: 6px; transition: all 0.2s; font-weight: 500; }
+.ht-btn:hover { background-color: var(--background-modifier-hover); }
+.mod-cta { background-color: var(--interactive-accent); color: var(--text-on-accent); border: none; }
+.mod-cta:hover { opacity: 0.9; }
+
+/* GRID PRINCIPAL */
+.ht-main { 
+    display: flex; flex: 1; overflow: hidden; 
+    border: 1px solid var(--background-modifier-border); 
+    border-radius: 12px; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* Columna Izquierda */
+.ht-main-left { 
+    width: 180px; flex-shrink: 0; display: flex; flex-direction: column; 
+    border-right: 1px solid var(--background-modifier-border); 
+    background: var(--background-secondary);
+    z-index: 2;
+}
+.ht-left-header-spacer { 
+    height: 44px; border-bottom: 1px solid var(--background-modifier-border); 
+    display: flex; align-items: center; padding-left: 16px; 
+    font-weight: 600; font-size: 0.8em; color: var(--text-muted); letter-spacing: 0.5px;
+}
+
+/* Columna Derecha */
+.ht-main-right { 
+    flex: 1; display: flex; flex-direction: column; 
+    overflow-x: auto; position: relative; 
+}
+.ht-scroll-strip { min-width: 100%; display: inline-block; }
+
+/* Filas y Celdas */
+.habit-tracker-day-bar, .ht-habit-cells-row, .ht-habit-meta { height: 44px; display: flex; align-items: center; }
+.habit-tracker-day-bar { 
+    position: sticky; top: 0; background: var(--background-secondary); 
+    border-bottom: 1px solid var(--background-modifier-border); z-index: 2; 
+}
+.ht-habit-meta { padding: 0 16px; border-bottom: 1px solid var(--background-modifier-border); cursor: pointer; transition: background 0.15s; }
+.ht-habit-meta:hover { background: var(--background-primary); }
+.ht-habit-cells-row { border-bottom: 1px solid var(--background-modifier-border); }
+
+.ht-habit-name { font-size: 0.95em; font-weight: 500; color: var(--text-normal); }
+.ht-habit-icon { margin-right: 8px; font-size: 1.1em; }
+
+.ht-day-cell, .ht-habit-cell { 
+    width: 48px; flex-shrink: 0; 
+    display: flex; flex-direction: column; justify-content: center; align-items: center; 
+    border-right: 1px solid var(--background-modifier-border-hover);
+}
+.ht-day-cell.is-today { background: var(--interactive-accent); color: var(--text-on-accent); }
+.ht-day-weekday { font-size: 0.65em; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
+.ht-day-date { font-size: 0.85em; font-weight: 600; }
+
+.ht-habit-cell { cursor: pointer; position: relative; font-size: 14px; }
+.ht-habit-cell:hover { background: var(--background-modifier-hover); }
+
+/* Contenido Celda */
+.ht-cell-content { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+.ht-cell-content:active { transform: scale(0.9); }
+.ht-cell-content.is-done { background-color: rgba(var(--interactive-accent-rgb), 0.1); font-weight: bold; }
+.ht-cell-content.is-fail { background-color: rgba(255, 80, 80, 0.1); color: var(--text-error); }
+.ht-cell-note::after { content: ""; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; background-color: var(--text-accent); border-radius: 50%; border: 1px solid var(--background-primary); }
+
+/* --- MODALES ANALYTICS (PREMIUM) --- */
+/* scoped al modal de Obsidian para que tenga prioridad sobre el .modal que marcaste */
+.modal .habit-analytics-modal { 
+    max-width: 550px; width: 95%; margin: 0 auto; 
+    border-radius: 16px; overflow: hidden; padding: 0 !important;
+    background-color: var(--background-primary);
+}
+.modal .habit-analytics-modal > .modal-content { padding: 24px; }
+
+.ham-header { 
+    margin-bottom: 24px; background: var(--background-secondary); 
+    margin: -24px -24px 24px -24px; padding: 24px; 
+    display: flex; justify-content: space-between; align-items: center;
+}
+.ham-title-row h2 { margin: 0; font-size: 1.5em; line-height: 1.2; }
+
+/* Botones de Rango */
+.ham-range-controls { display: flex; gap: 5px; background: var(--background-primary); padding: 4px; border-radius: 8px; }
+.ham-range-btn { 
+    background: transparent; border: none; font-size: 0.8em; padding: 4px 10px; 
+    border-radius: 6px; cursor: pointer; color: var(--text-muted); font-weight: 600;
+}
+.ham-range-btn:hover { color: var(--text-normal); }
+.ham-range-btn.is-active { background: var(--interactive-accent); color: var(--text-on-accent); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+.ham-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 30px; }
+.ham-card { 
+    background: var(--background-secondary); padding: 16px; border-radius: 12px; 
+    border: 1px solid var(--background-modifier-border); 
+    display: flex; flex-direction: column; justify-content: center;
+}
+.ham-card-title { font-size: 0.75em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px; }
+.ham-card-value { font-size: 1.8em; font-weight: 700; line-height: 1; }
+.ham-card-sub { font-size: 0.75em; color: var(--text-muted); margin-top: 4px; }
+
+/* CONTENEDOR DE GRÁFICOS */
+.ham-chart-container {
+    position: relative;
+    height: 220px;
+    width: 100%;
+    margin-bottom: 30px;
+}
+.ham-chart-container canvas { width: 100% !important; height: 100% !important; }
+
+.ham-section-title { 
+    font-size: 0.9em; font-weight: 700; margin-bottom: 12px; 
+    color: var(--text-normal); text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8;
+}
+
+/* TABLA SEMANAL */
+.ham-weekday-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 10px; }
+.ham-weekday-table th, .ham-weekday-table td { text-align: center; padding: 0; border: none; }
+
+/* MODALES INPUTS */
+.habit-modal input, .habit-modal select, .habit-modal textarea { width: 100%; }
+.habit-modal .setting-item { border: none; padding: 12px 0; }
+.habit-modal-footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--background-modifier-border); }
+
+/* Context Inputs */
+.ht-context-row { margin-bottom: 15px; padding: 10px; background: var(--background-secondary); border-radius: 8px; }
+.ht-mood-selector { display: flex; justify-content: space-between; gap: 5px; margin-bottom: 20px; }
+.ht-mood-btn { flex: 1; font-size: 1.5em; padding: 8px 0; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: pointer; }
+.ht-mood-btn.is-selected { background: var(--interactive-accent); border-color: var(--interactive-accent); }
+
+.modal {
+    --checkbox-size: var(--font-ui-medium);
+    background-color: var(--modal-background);
+    border-radius: var(--modal-radius);
+    border: var(--modal-border-width) solid var(--modal-border-color);
+    padding: var(--size-4-4);
+    position: relative;
+    min-height: 100px;
+    width: var(--dialog-width);
+    max-width: var(--dialog-max-width);
+    max-height: var(--dialog-max-height);
+    display: flex;
+    flex-direction: row;
+    overflow: auto;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-content: stretch;
+}
+
+
+===== tsconfig.json =====
+
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "module": "ESNext",
+    "target": "ES6",
+    "allowJs": true,
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "isolatedModules": true,
+    "strictNullChecks": true,
+    "lib": [
+      "DOM",
+      "ES5",
+      "ES6",
+      "ES7"
+    ]
+  },
+  "include": [
+    "**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "test",
+    "coverage",
+    "**/*.d.ts"
+  ]
+}
+
+===== src/utils/notes.ts =====
+
+import { App, TFile, TFolder, normalizePath, Notice } from "obsidian";
+import { Habit } from "../core/types";
+import { toDateOnly } from "./dates";
+
+export interface NoteSettings {
+	folder: string;
+	openAfterCreate: boolean;
+	askBeforeCreate: boolean;
+	filenamePattern: string;
+	template: string;
+}
+
+export async function ensureFolder(app: App, folder: string): Promise<string> {
+	const path = normalizePath(folder.trim() || "Habit Logs");
+	const existing = app.vault.getAbstractFileByPath(path);
+	if (!existing) {
+		await app.vault.createFolder(path);
+	}
+	return path;
+}
+
+function renderTemplate(template: string, ctx: { habit: string; date: Date; value: string; notes: string; }) {
+	let out = template;
+	out = out.replace(/{{habit}}/g, ctx.habit);
+	out = out.replace(/{{value}}/g, ctx.value);
+	out = out.replace(/{{notes}}/g, ctx.notes);
+	out = out.replace(/{{date:YYYY-MM-DD}}/g, () => {
+		const y = ctx.date.getFullYear();
+		const m = String(ctx.date.getMonth() + 1).padStart(2, "0");
+		const d = String(ctx.date.getDate()).padStart(2, "0");
+		return `${y}-${m}-${d}`;
+	});
+    // Helper simple de tiempo
+    const now = new Date();
+	out = out.replace(/{{time:HH:mm}}/g, `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`);
+	return out;
+}
+
+export async function createHabitNote(
+	app: App,
+	settings: NoteSettings,
+	habit: Habit,
+	dateStr: string,
+	valueText: string,
+	userNotes: string
+): Promise<string> {
+	const baseFolder = await ensureFolder(app, settings.folder);
+	const noteDate = toDateOnly(dateStr); 
+	
+	let filename = settings.filenamePattern.replace("{{habit}}", habit.name);
+    const y = noteDate.getFullYear();
+    const m = String(noteDate.getMonth() + 1).padStart(2, "0");
+    const d = String(noteDate.getDate()).padStart(2, "0");
+    filename = filename.replace("{{date:YYYY-MM-DD}}", `${y}-${m}-${d}`);
+    
+	if (!filename.endsWith(".md")) filename += ".md";
+	const path = normalizePath(`${baseFolder}/${filename}`);
+	
+	const content = renderTemplate(settings.template, {
+		habit: habit.name,
+		date: noteDate,
+		value: valueText,
+		notes: userNotes
+	});
+
+	const existing = app.vault.getAbstractFileByPath(path);
+	let file: TFile;
+
+	try {
+		if (existing instanceof TFile) {
+			await app.vault.modify(existing, content);
+			file = existing;
+		} else {
+			file = await app.vault.create(path, content);
+		}
+	} catch (e) {
+		console.error(e);
+		new Notice("Error creando nota.");
+		throw e;
+	}
+
+	if (settings.openAfterCreate) {
+		await app.workspace.getLeaf(true).openFile(file);
+	}
+	return file.path;
+}
+
+===== src/utils/backup.ts =====
+
+import { App, TFile, normalizePath } from "obsidian";
+import { HabitStorage } from "../core/storage";
+import { ensureFolder } from "./notes";
+
+export async function exportJsonBackup(app: App, storage: HabitStorage): Promise<string> {
+	const d = storage.getData();
+	const folder = await ensureFolder(app, d.settingsSnapshot.backupFolder);
+	const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+	const filename = `habit-backup-${stamp}.json`;
+	const path = normalizePath(`${folder}/${filename}`);
+	const json = JSON.stringify(d, null, 2);
+	await app.vault.create(path, json);
+	return path;
+}
+
+export async function importJsonBackup(app: App, storage: HabitStorage, path: string) {
+	const normalized = normalizePath(path.trim());
+	const file = app.vault.getAbstractFileByPath(normalized);
+	if (!(file instanceof TFile)) throw new Error("Archivo no encontrado.");
+	const content = await app.vault.read(file);
+	const raw = JSON.parse(content);
+	await storage.importFromRaw(raw);
+}
+
+export async function exportCsv(app: App, storage: HabitStorage): Promise<string> {
+	const d = storage.getData();
+	const folder = await ensureFolder(app, d.settingsSnapshot.backupFolder);
+	const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+	const filename = `habit-logs-${stamp}.csv`;
+	const path = normalizePath(`${folder}/${filename}`);
+
+	const lines: string[] = [];
+	lines.push("habitId,habitName,date,type,value,notePath");
+	
+	for (const h of d.habits) {
+		for (const date of Object.keys(h.entries)) {
+			const e = h.entries[date];
+			let v = "";
+			if (typeof e.value === "number") v = String(e.value);
+			else v = e.value;
+			const note = e.notePath ?? "";
+			lines.push(`"${h.id}","${h.name.replace(/"/g, '""')}",${date},${h.type},${v},"${note.replace(/"/g, '""')}"`);
+		}
+	}
+	await app.vault.create(path, lines.join("\n"));
+	return path;
+}
+
+export async function repairDatabase(storage: HabitStorage) {
+    await storage.repairData();
+}
+
+===== src/utils/reports.ts =====
+
+import { App, TFile, normalizePath } from "obsidian";
+import { HabitStorage } from "../core/storage";
+import { ensureFolder } from "./notes";
+import { todayString, addDays, compareDateStr } from "./dates";
+import { evalHabitOnDate } from "../core/entries";
+
+export async function generateMonthlyReport(app: App, storage: HabitStorage): Promise<string> {
+	const d = storage.getData();
+	const folder = await ensureFolder(app, d.settingsSnapshot.reportsFolder);
+	const now = new Date();
+	const label = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+	
+	const filename = `Habit Report ${label}.md`;
+	const path = normalizePath(`${folder}/${filename}`);
+	let content = `# Habit Report (${label})\n\n`;
+
+	for (const h of d.habits) {
+		const startOfMonth = `${label}-01`;
+		const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0); 
+		const endOfMonth = `${label}-${String(nextMonth.getDate()).padStart(2, "0")}`;
+		
+		let ok = 0, total = 0;
+		for (let d = startOfMonth; compareDateStr(d, endOfMonth) <= 0; d = addDays(d, 1)) {
+			if (compareDateStr(d, todayString()) > 0) break;
+			if (evalHabitOnDate(h, d) !== "NONE") {
+                total++;
+                if(evalHabitOnDate(h, d) === "OK") ok++;
+            }
+		}
+		const percent = total > 0 ? Math.round((ok / total) * 100) : 0;
+		content += `## ${h.name}\n- Score: ${ok}/${total} (${percent}%)\n\n`;
+	}
+
+	const existing = app.vault.getAbstractFileByPath(path);
+	if (existing instanceof TFile) await app.vault.modify(existing, content);
+	else await app.vault.create(path, content);
+	return path;
+}
+
+===== src/utils/dates.ts =====
+
+export function todayString(): string {
+	const d = new Date();
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, "0");
+	const day = String(d.getDate()).padStart(2, "0");
+	return `${y}-${m}-${day}`;
+}
+
+export function toDateOnly(dateStr: string): Date {
+	const [y, m, d] = dateStr.split("-").map((x) => Number(x));
+	return new Date(Date.UTC(y, m - 1, d));
+}
+
+export function addDays(dateStr: string, offset: number): string {
+	const d = toDateOnly(dateStr);
+	d.setUTCDate(d.getUTCDate() + offset);
+	const y = d.getUTCFullYear();
+	const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+	const day = String(d.getUTCDate()).padStart(2, "0");
+	return `${y}-${m}-${day}`;
+}
+
+export function compareDateStr(a: string, b: string): number {
+	if (a < b) return -1;
+	if (a > b) return 1;
+	return 0;
+}
+
+export function weekdayShort(dateStr: string, firstDayOfWeek: "Mon" | "Sun" = "Mon"): string {
+	const d = toDateOnly(dateStr);
+	const day = d.getUTCDay(); 
+	const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+	return names[day]; 
+}
+
+export function getRangeBounds(mode: "week" | "month" | "year"): { from: string; to: string } {
+	const today = todayString();
+	let from = today;
+
+	if (mode === "week") {
+		from = addDays(today, -6); 
+	} else if (mode === "month") {
+		from = addDays(today, -29); 
+	} else {
+		from = addDays(today, -364); 
+	}
+
+	return { from, to: today };
+}
+
+===== src/core/entries.ts =====
+
+import { HabitStorage } from "./storage";
+import { Habit, HabitEntry, HabitEval } from "./types";
+
+/* ============================================
+   Evaluación de entradas (sin cambios)
+============================================ */
+
+export function evalHabitEntry(habit: Habit, entry?: HabitEntry): HabitEval {
+    if (!entry) return "NONE";
+
+    if (habit.type === "yesno") {
+        if (entry.value === "✔") return "OK";
+        if (entry.value === "✖") return "NO";
+        return "NONE";
+    } else {
+        if (typeof entry.value !== "number") return "NONE";
+        if (!habit.goal) return "NONE";
+        const v = entry.value;
+
+        switch (habit.goal.type) {
+            case "atLeast": return v >= habit.goal.value ? "OK" : "NO";
+            case "atMost": return v <= habit.goal.value ? "OK" : "NO";
+            case "exactly": return v === habit.goal.value ? "OK" : "NO";
+            default: return "NONE";
+        }
+    }
+}
+
+export function evalHabitOnDate(habit: Habit, date: string): HabitEval {
+    const entry = habit.entries[date];
+    const basic = evalHabitEntry(habit, entry);
+    if (basic !== "NONE") return basic;
+
+    if (habit.type === "yesno") {
+        const today = new Date().toISOString().split("T")[0];
+        if (date < today) return "NO";
+    }
+
+    return basic;
+}
+
+/* ============================================
+   🔥 EXTENSIÓN: setEntry ahora soporta energía + ánimo
+============================================ */
+
+interface EntryExtraFields {
+    energy?: number;
+    mood?: string;
+}
+
+export async function setEntry(
+    storage: HabitStorage,
+    habitId: string,
+    date: string,
+    value: "✔" | "✖" | number,
+    notePath?: string,
+    extra?: EntryExtraFields
+) {
+    await storage.update((d) => {
+        const h = d.habits.find((x) => x.id === habitId);
+        if (!h) return;
+
+        // Mantener datos previos si existen
+        const prev = h.entries[date] ?? {};
+
+        h.entries[date] = {
+            date,
+            value,
+            notePath: notePath ?? prev.notePath,
+
+            // 🔥 NUEVOS CAMPOS (con fallback)
+            energy: extra?.energy ?? prev.energy,
+            mood: extra?.mood ?? prev.mood
+        };
+    });
+}
+
+/* ============================================
+   Helpers auxiliares
+============================================ */
+
+export async function clearEntry(storage: HabitStorage, habitId: string, date: string) {
+    await storage.update((d) => {
+        const h = d.habits.find((x) => x.id === habitId);
+        if (!h) return;
+        delete h.entries[date];
+    });
+}
+
+export const deleteEntry = clearEntry;
+
+export function getEntryForDate(
+    storage: HabitStorage,
+    habitId: string,
+    date: string
+): HabitEntry | undefined {
+    const habit = storage.getData().habits.find(h => h.id === habitId);
+    if (!habit) return undefined;
+    return habit.entries[date];
+}
+
+
+===== src/core/storage.ts =====
+
+import { Plugin, Events } from "obsidian";
+import { HabitData, HabitPluginSettings, Habit } from "./types";
+
+const CURRENT_DATA_VERSION = 1;
+
+const DEFAULT_SETTINGS: HabitPluginSettings = {
+	firstDayOfWeek: "Mon",
+	notesFolder: "Habit Logs",
+	openNoteAfterCreate: false,
+	askBeforeCreateNote: false,
+	noteFilenamePattern: "{{date:YYYY-MM-DD}} - {{habit}}",
+	noteTemplate: "---\ntype: habit-log\n---\n# {{habit}}\n{{notes}}",
+	reportsFolder: "Habit Logs",
+	dayBarOrientation: "recent-right",
+	autoHideCompletedToday: false,
+	soundsEnabled: false,
+	backupFolder: "Habit Backups",
+	sortMode: "manual"
+};
+
+export class HabitStorage {
+	private plugin: Plugin;
+	private data: HabitData;
+	
+	public events = new Events();
+
+	constructor(plugin: Plugin) {
+		this.plugin = plugin;
+		this.data = this.getEmptyData();
+	}
+
+	async load(): Promise<HabitData> {
+		const raw = await this.plugin.loadData();
+		if (!raw) {
+			this.data = this.getEmptyData();
+			await this.save();
+			return this.data;
+		}
+		this.data = this.migrate(raw);
+		return this.data;
+	}
+
+	async save(): Promise<void> {
+		await this.plugin.saveData(this.data);
+		this.events.trigger("changed", this.data);
+	}
+
+	getData(): HabitData {
+		return this.data;
+	}
+
+	async update(mutator: (d: HabitData) => void): Promise<void> {
+		mutator(this.data);
+		await this.save();
+	}
+
+	private getEmptyData(): HabitData {
+		return {
+			version: CURRENT_DATA_VERSION,
+			habits: [],
+			settingsSnapshot: { ...DEFAULT_SETTINGS }
+		};
+	}
+
+	private migrate(raw: any): HabitData {
+		const v: any = raw ?? {};
+		if (v.version == null) v.version = 1;
+		if (!Array.isArray(v.habits)) v.habits = [];
+		v.settingsSnapshot = { ...DEFAULT_SETTINGS, ...v.settingsSnapshot };
+		v.habits.forEach((h: Habit, idx: number) => {
+			if (h.order == null) h.order = idx;
+		});
+		return v as HabitData;
+	}
+
+	async repairData() {
+		this.data = this.migrate(this.data);
+		await this.save();
+	}
+
+    async importFromRaw(raw: any) {
+		const data = this.migrate(raw);
+		this.data = data;
+		await this.save();
+	}
+}
+
+===== src/core/analytics.ts =====
+
+import { Habit, HabitEval } from "./types";
+import { evalHabitOnDate } from "./entries";
+import { todayString, addDays, compareDateStr, getRangeBounds, weekdayShort } from "../utils/dates";
+import { HabitStorage } from "./storage"; // Importación necesaria para los wrappers
+
+export interface LineSeries { labels: string[]; values: number[]; }
+export interface RangeStats { ok: number; total: number; percent: number; }
+export interface TrendSummary { monthDelta: number; yearDelta: number; monthCurrent: number; yearCurrent: number; }
+export interface StreakInfo { bestStreak: number; currentStreak: number; lastDate?: string; }
+export type WeekdayKey = "Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
+export interface WeekdayStats { ok: number; total: number; percent: number; }
+export type HeatmapData = Record<string, HabitEval>;
+export interface HabitDateRange { from?: string; to?: string; }
+
+type ScorePoint = { date: string; score: number; };
+
+// --- Exponential Smoothing (Loop Algorithm) ---
+export function computeScoreTimeline(habit: Habit): ScorePoint[] {
+	const entries = habit.entries;
+	const entryDates = Object.keys(entries);
+	let start = todayString();
+	if (entryDates.length > 0) {
+		entryDates.sort(compareDateStr);
+		start = entryDates[0];
+	}
+	
+	if (habit.createdAt) {
+		const created = habit.createdAt.slice(0, 10);
+		if (compareDateStr(created, start) < 0) start = created;
+	}
+
+	const today = todayString();
+	if (compareDateStr(start, today) > 0) return [];
+
+	const frequency = 1;
+	const multiplier = Math.pow(0.5, Math.sqrt(frequency) / 13.0);
+	let score = 0; 
+	const result: ScorePoint[] = [];
+
+	for (let d = start; compareDateStr(d, today) <= 0; d = addDays(d, 1)) {
+		const ev = evalHabitOnDate(habit, d);
+		let checkValue: number | null = null;
+
+		if (ev === "OK") checkValue = 1;
+		else if (ev === "NO") checkValue = 0;
+		else checkValue = null;
+
+		if (checkValue !== null) score = score * multiplier + checkValue * (1 - multiplier);
+		else score = score * multiplier; 
+
+		result.push({ date: d, score });
+	}
+	return result;
+}
+
+export function getOverallStats(habit: Habit): RangeStats {
+	const today = todayString();
+	const dates = Object.keys(habit.entries);
+	let ok = 0; let total = 0;
+	
+	for (const d of dates) {
+		if (compareDateStr(d, today) > 0) continue;
+		const ev = evalHabitOnDate(habit, d);
+		if (ev === "OK") { ok++; total++; }
+		else if (ev === "NO") { total++; }
+	}
+
+	const timeline = computeScoreTimeline(habit);
+	const last = timeline.length > 0 ? timeline[timeline.length - 1] : null;
+	const percent = last ? Math.round(last.score * 100) : 0;
+
+	return { ok, total, percent };
+}
+
+export function getTrendSummary(habit: Habit): TrendSummary {
+	const timeline = computeScoreTimeline(habit);
+	if (timeline.length === 0) return { monthDelta: 0, yearDelta: 0, monthCurrent: 0, yearCurrent: 0 };
+
+	const today = todayString();
+	const currentScore = timeline[timeline.length - 1].score * 100;
+
+	const getScoreAt = (target: string): number => {
+		if (compareDateStr(target, timeline[0].date) < 0) return 0;
+		for (let i = 0; i < timeline.length; i++) {
+			if (compareDateStr(timeline[i].date, target) >= 0) return timeline[i].score * 100;
+		}
+		return timeline[timeline.length - 1].score * 100;
+	};
+
+	const monthAgo = getScoreAt(addDays(today, -30));
+	const yearAgo = getScoreAt(addDays(today, -365));
+
+	return {
+		monthDelta: Math.round(currentScore - monthAgo),
+		yearDelta: Math.round(currentScore - yearAgo),
+		monthCurrent: Math.round(currentScore),
+		yearCurrent: Math.round(currentScore)
+	};
+}
+
+export function buildHeatmapData(habit: Habit): HeatmapData {
+	const map: HeatmapData = {};
+	const today = todayString();
+	const dates = Object.keys(habit.entries).sort();
+	const start = dates.length > 0 ? dates[0] : today;
+
+	for (let d = start; compareDateStr(d, today) <= 0; d = addDays(d, 1)) {
+		const ev = evalHabitOnDate(habit, d);
+		if (ev !== "NONE") map[d] = ev;
+	}
+	return map;
+}
+
+export function buildScoreSeries(habit: Habit, mode: "week" | "month" | "year"): LineSeries {
+	const timeline = computeScoreTimeline(habit);
+	const { from, to } = getRangeBounds(mode);
+	const labels: string[] = []; const values: number[] = [];
+
+	for (const p of timeline) {
+		if (compareDateStr(p.date, from) >= 0 && compareDateStr(p.date, to) <= 0) {
+			labels.push(p.date.slice(5));
+			values.push(Math.round(p.score * 100));
+		}
+	}
+	return { labels, values };
+}
+
+export function buildHistorySeries(habit: Habit, mode: "week" | "month" | "year"): LineSeries {
+	const { from, to } = getRangeBounds(mode);
+	const labels: string[] = []; const values: number[] = [];
+
+	if (mode !== "year") {
+		for (let d = from; compareDateStr(d, to) <= 0; d = addDays(d, 1)) {
+			const ev = evalHabitOnDate(habit, d);
+            const ent = habit.entries[d];
+			labels.push(d.slice(5));
+			values.push(habit.type === "yesno" ? (ev === "OK" ? 1 : 0) : (ent && typeof ent.value==='number' ? ent.value : 0));
+		}
+	} else {
+        const monthMap = new Map<string, number>();
+        const countMap = new Map<string, number>();
+        const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+        
+        for (let d = from; compareDateStr(d, to) <= 0; d = addDays(d, 1)) {
+            const mIdx = parseInt(d.split('-')[1]) - 1;
+            const key = months[mIdx];
+            const ev = evalHabitOnDate(habit, d);
+            const ent = habit.entries[d];
+            
+            if(!monthMap.has(key)) { monthMap.set(key, 0); countMap.set(key, 0); }
+            
+            if(habit.type === 'yesno') {
+                if(ev === "OK") monthMap.set(key, monthMap.get(key)! + 1);
+            } else {
+                if(ent && typeof ent.value === 'number') {
+                    monthMap.set(key, monthMap.get(key)! + ent.value);
+                    countMap.set(key, countMap.get(key)! + 1);
+                }
+            }
+        }
+        monthMap.forEach((val, key) => {
+            labels.push(key);
+            if(habit.type === 'quant' && countMap.get(key)! > 0) values.push(Math.round(val / countMap.get(key)!));
+            else values.push(val);
+        });
+	}
+	return { labels, values };
+}
+
+// Wrappers para integración
+export function getStreakInfoForHabit(storage: HabitStorage, habitId: string): StreakInfo {
+    const habit = storage.getData().habits.find((h) => h.id === habitId);
+    if(!habit) return {bestStreak:0, currentStreak:0};
+    
+    let curr = 0, best = 0;
+    const today = todayString();
+    const dates = Object.keys(habit.entries).sort();
+    if(dates.length === 0) return {bestStreak:0, currentStreak:0};
+    
+    let cursor = dates[0];
+    while(compareDateStr(cursor, today) <= 0) {
+        if(evalHabitOnDate(habit, cursor) === "OK") {
+            curr++; if(curr>best) best=curr;
+        } else {
+            // Revisar si es un día que rompe racha (NO). Si es NONE (no hecho, pero quizás no tocaba), depende de la lógica.
+            // Para simplificar Loop: un día sin hacer rompe racha si se espera diario.
+            if(evalHabitOnDate(habit, cursor) === "NO") curr = 0; 
+        }
+        cursor = addDays(cursor, 1);
+    }
+    return {bestStreak: best, currentStreak: curr, lastDate: dates[dates.length-1]};
+}
+
+export function getOverallScoreForHabit(storage: HabitStorage, habitId: string): RangeStats {
+    const habit = storage.getData().habits.find((h) => h.id === habitId);
+    return habit ? getOverallStats(habit) : {ok:0, total:0, percent:0};
+}
+
+export function getWeekdayStatsForHabit(storage: HabitStorage, habitId: string): Record<WeekdayKey, WeekdayStats> {
+    const habit = storage.getData().habits.find((h) => h.id === habitId);
+    const stats: any = {};
+    ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(k => stats[k] = {ok:0, total:0, percent:0});
+    if(habit) {
+        Object.keys(habit.entries).forEach(d => {
+            if(evalHabitOnDate(habit, d) !== "NONE") {
+                const wd = weekdayShort(d);
+                if(stats[wd]) {
+                    stats[wd].total++;
+                    if(evalHabitOnDate(habit, d) === "OK") stats[wd].ok++;
+                }
+            }
+        });
+    }
+    Object.keys(stats).forEach(k => stats[k].percent = stats[k].total ? Math.round(stats[k].ok/stats[k].total*100) : 0);
+    return stats;
+}
+
+export function getHeatmapDataForHabit(storage: HabitStorage, habitId: string): HeatmapData {
+    const habit = storage.getData().habits.find((h) => h.id === habitId);
+    return habit ? buildHeatmapData(habit) : {};
+}
+
+export function getHabitDateRange(storage: HabitStorage, habitId: string): HabitDateRange {
+    const habit = storage.getData().habits.find((h) => h.id === habitId);
+    const dates = habit ? Object.keys(habit.entries).sort() : [];
+    return dates.length ? {from: dates[0], to: dates[dates.length-1]} : {};
+}
+
+// ... (código existente)
+
+// --- Mood Analytics ---
+export interface MoodStats {
+    labels: string[];
+    data: number[];
+}
+
+export function getMoodDistribution(habit: Habit, mode: "week" | "month" | "year"): MoodStats {
+    const { from, to } = getRangeBounds(mode);
+    const counts: Record<string, number> = { 
+        "😫": 0, "😐": 0, "🙂": 0, "😄": 0, "🔥": 0 
+    };
+    
+    // Recorrer entradas
+    for (const date in habit.entries) {
+        if (compareDateStr(date, from) >= 0 && compareDateStr(date, to) <= 0) {
+            const entry = habit.entries[date];
+            // Solo contar si hay un mood registrado
+            if (entry.mood && counts.hasOwnProperty(entry.mood)) {
+                counts[entry.mood]++;
+            }
+        }
+    }
+
+    // Filtrar solo los que tienen datos para no llenar el gráfico de ceros
+    const labels: string[] = [];
+    const data: number[] = [];
+
+    // Orden específico: de triste a fuego
+    const order = ["😫", "😐", "🙂", "😄", "🔥"];
+    
+    order.forEach(mood => {
+        if (counts[mood] > 0) {
+            labels.push(mood);
+            data.push(counts[mood]);
+        }
+    });
+
+    return { labels, data };
+}
+
+// Helper para obtener promedio de energía
+export function getAverageEnergy(habit: Habit, mode: "week" | "month" | "year"): string {
+    const { from, to } = getRangeBounds(mode);
+    let total = 0;
+    let count = 0;
+
+    for (const date in habit.entries) {
+        if (compareDateStr(date, from) >= 0 && compareDateStr(date, to) <= 0) {
+            const entry = habit.entries[date];
+            if (entry.energy) {
+                total += entry.energy;
+                count++;
+            }
+        }
+    }
+    
+    if (count === 0) return "-";
+    return (total / count).toFixed(1); // Ej: "4.2"
+}
+
+===== src/core/types.ts =====
+
+// src/core/types.ts
+
+export type HabitType = "yesno" | "quant";
+export type GoalType = "atLeast" | "atMost" | "exactly";
+export type HabitSortMode = "manual" | "alpha" | "color";
+export type DayBarOrientation = "recent-right" | "recent-left";
+export type FrequencyMode = "daily";
+
+// Evaluación (OK/NO)
+export type HabitEval = "OK" | "NO" | "NONE";
+
+export interface HabitGoal {
+    type: GoalType;
+    value: number;
+    unit?: string;
+}
+
+export interface HabitFrequency {
+    mode: FrequencyMode;
+}
+
+// ----------
+// 🔥 NUEVO: Ahora soporta energía y ánimo
+// ----------
+export interface HabitEntry {
+    date: string;            // YYYY-MM-DD
+    value: "✔" | "✖" | number;
+    notePath?: string;
+
+    // CONTEXTO NUEVO
+    energy?: number;         // 1 (baja) a 5 (alta)
+    mood?: string;           // emoji o identificador ("🙂", "😔", "🔥")
+}
+
+export interface Habit {
+    id: string;
+    name: string;
+    color: string;
+    icon?: string;
+    type: HabitType;
+    frequency: HabitFrequency;
+    goal?: HabitGoal;
+    archived?: boolean;
+    entries: Record<string, HabitEntry>;
+    createdAt: string;
+    order?: number;
+}
+
+export interface HabitPluginSettings {
+    firstDayOfWeek: "Mon" | "Sun";
+    notesFolder: string;
+    openNoteAfterCreate: boolean;
+    askBeforeCreateNote: boolean;
+    noteFilenamePattern: string;
+    noteTemplate: string;
+    reportsFolder: string;
+    dayBarOrientation: DayBarOrientation;
+    autoHideCompletedToday: boolean;
+    soundsEnabled: boolean;
+    backupFolder: string;
+    sortMode: HabitSortMode;
+}
+
+export interface HabitData {
+    version: number;
+    habits: Habit[];
+    settingsSnapshot: HabitPluginSettings;
+}
+
+
+===== src/core/habits.ts =====
+
+import { HabitStorage } from "./storage";
+import { Habit, HabitType, HabitFrequency, HabitGoal, HabitSortMode } from "./types";
+
+function randomHabitId(): string {
+	return "h_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 10);
+}
+
+export interface CreateHabitOptions {
+	name: string;
+	type: HabitType;
+	color?: string;
+	icon?: string;
+	frequency: HabitFrequency;
+	goal?: HabitGoal;
+}
+
+export async function createHabit(storage: HabitStorage, opts: CreateHabitOptions): Promise<Habit> {
+	if (!opts.name.trim()) throw new Error("Nombre obligatorio");
+	const habit: Habit = {
+		id: randomHabitId(),
+		name: opts.name.trim(),
+		type: opts.type,
+		color: opts.color ?? "#FF8888",
+		icon: opts.icon,
+		frequency: opts.frequency,
+		goal: opts.goal,
+		archived: false,
+		entries: {},
+		createdAt: new Date().toISOString(),
+		order: storage.getData().habits.length
+	};
+	await storage.update(d => d.habits.push(habit));
+	return habit;
+}
+
+export async function updateHabit(storage: HabitStorage, habit: Habit) {
+    await storage.update((d) => {
+        const idx = d.habits.findIndex((h) => h.id === habit.id);
+        if (idx !== -1) d.habits[idx] = habit;
+    });
+}
+
+export async function archiveHabit(storage: HabitStorage, id: string) {
+	await storage.update((d) => {
+		const h = d.habits.find((x) => x.id === id);
+		if (h) h.archived = true;
+	});
+}
+
+export async function restoreHabit(storage: HabitStorage, id: string) {
+	await storage.update((d) => {
+		const h = d.habits.find((x) => x.id === id);
+		if (h) h.archived = false;
+	});
+}
+
+export async function deleteHabit(storage: HabitStorage, id: string) {
+	await storage.update((d) => {
+		d.habits = d.habits.filter((h) => h.id !== id);
+	});
+}
+
+export function sortHabits(habits: Habit[], mode: HabitSortMode): Habit[] {
+	const arr = [...habits];
+	if (mode === "alpha") return arr.sort((a, b) => a.name.localeCompare(b.name));
+	if (mode === "color") return arr.sort((a, b) => a.color.localeCompare(b.color));
+	return arr.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+export async function reorderHabits(storage: HabitStorage, sourceId: string, targetId: string) {
+    await storage.update((d) => {
+        const habits = d.habits;
+        const fromIdx = habits.findIndex((h) => h.id === sourceId);
+        const toIdx = habits.findIndex((h) => h.id === targetId);
+        if (fromIdx === -1 || toIdx === -1) return;
+        const [moved] = habits.splice(fromIdx, 1);
+        habits.splice(toIdx, 0, moved);
+        habits.forEach((h, idx) => h.order = idx);
+    });
+}
+
+===== src/ui/SettingsTab.ts =====
+
+import { App, Plugin, PluginSettingTab, Setting, Notice } from "obsidian";
+// CORRECCIÓN: Nombre correcto de la clase de almacenamiento
+import { HabitStorage } from "../core/storage";
+import { generateMonthlyReport } from "../utils/reports";
+// CORRECCIÓN: Nombres correctos de las funciones exportadas en backup.ts
+import { exportJsonBackup, exportCsv, importJsonBackup } from "../utils/backup";
+
+export class HabitSettingsTab extends PluginSettingTab {
+    // CORRECCIÓN: Tipo correcto
+	storage: HabitStorage;
+
+	constructor(app: App, plugin: Plugin, storage: HabitStorage) {
+		super(app, plugin);
+		this.storage = storage;
+	}
+
+	display(): void {
+		const { containerEl } = this;
+		containerEl.empty();
+
+		const data = this.storage.getData();
+		const s = data.settingsSnapshot;
+
+		containerEl.createEl("h2", { text: "Habit Loop – Configuración" });
+
+		// --- SECCIÓN: NOTAS ---
+		new Setting(containerEl).setHeading().setName("Notas y Registros");
+
+		new Setting(containerEl)
+			.setName("Carpeta de notas")
+			.setDesc("Donde se guardarán las notas individuales de cada registro.")
+			.addText(t => t
+				.setValue(s.notesFolder)
+				.onChange(async v => {
+					s.notesFolder = v;
+					await this.storage.save();
+				}));
+
+		new Setting(containerEl)
+			.setName("Plantilla de nota")
+			.setDesc("Variables disponibles: {{habit}}, {{date:YYYY-MM-DD}}, {{value}}, {{notes}}")
+			.addTextArea(t => t
+				.setValue(s.noteTemplate)
+				.onChange(async v => {
+					s.noteTemplate = v;
+					await this.storage.save();
+				}));
+
+		new Setting(containerEl)
+			.setName("Abrir nota al crear")
+			.addToggle(t => t
+				.setValue(s.openNoteAfterCreate)
+				.onChange(async v => {
+					s.openNoteAfterCreate = v;
+					await this.storage.save();
+				}));
+        
+        new Setting(containerEl)
+            .setName("Preguntar antes de crear")
+            .addToggle(t => t
+                .setValue(s.askBeforeCreateNote)
+                .onChange(async v => {
+                    s.askBeforeCreateNote = v;
+                    await this.storage.save();
+                }));
+
+		// --- SECCIÓN: INTERFAZ ---
+		new Setting(containerEl).setHeading().setName("Interfaz");
+
+		new Setting(containerEl)
+			.setName("Orientación de la barra de días")
+			.addDropdown(d => d
+				.addOption("recent-right", "Recientes a la derecha (→)")
+				.addOption("recent-left", "Recientes a la izquierda (←)")
+				.setValue(s.dayBarOrientation)
+				.onChange(async v => {
+					s.dayBarOrientation = v as any;
+					await this.storage.save();
+				}));
+
+		new Setting(containerEl)
+			.setName("Ocultar completados hoy")
+			.setDesc("Limpia la vista principal ocultando lo que ya hiciste hoy.")
+			.addToggle(t => t
+				.setValue(s.autoHideCompletedToday)
+				.onChange(async v => {
+					s.autoHideCompletedToday = v;
+					await this.storage.save();
+				}));
+
+		// --- SECCIÓN: DATOS & BACKUP ---
+		new Setting(containerEl).setHeading().setName("Datos y Mantenimiento");
+
+		new Setting(containerEl)
+			.setName("Carpeta de Backups")
+			.addText(t => t
+				.setValue(s.backupFolder)
+				.onChange(async v => {
+					s.backupFolder = v;
+					await this.storage.save();
+				}));
+
+		new Setting(containerEl)
+			.setName("Exportar")
+			.setDesc("Genera archivos en tu bóveda.")
+			.addButton(b => b
+				.setButtonText("JSON Backup")
+				.onClick(async () => {
+					const p = await exportJsonBackup(this.app, this.storage);
+					new Notice(`Backup creado: ${p}`);
+				}))
+			.addButton(b => b
+				.setButtonText("CSV Logs")
+				.onClick(async () => {
+					const p = await exportCsv(this.app, this.storage);
+					new Notice(`CSV creado: ${p}`);
+				}));
+
+        new Setting(containerEl)
+            .setName("Generar Reporte Mensual")
+            .setDesc("Crea un resumen Markdown del mes actual.")
+            .addButton(b => b
+                .setButtonText("Generar Reporte")
+                .onClick(async () => {
+                    const p = await generateMonthlyReport(this.app, this.storage);
+                    new Notice(`Reporte: ${p}`);
+                }));
+
+		// Importación
+		let importPath = "";
+		new Setting(containerEl)
+			.setName("Importar JSON")
+			.setDesc("⚠️ Sobrescribe todos los datos actuales.")
+			.addText(t => t
+				.setPlaceholder("Ruta/al/backup.json")
+				.onChange(v => importPath = v))
+			.addButton(b => b
+				.setButtonText("Restaurar")
+				.setWarning()
+				.onClick(async () => {
+					if(!importPath) return new Notice("Define la ruta del archivo.");
+					try {
+						await importJsonBackup(this.app, this.storage, importPath);
+						new Notice("Datos restaurados correctamente.");
+					} catch(e) {
+						new Notice("Error al importar. Verifica la ruta.");
+						console.error(e);
+					}
+				}));
+                
+        new Setting(containerEl)
+            .setName("Reparar Base de Datos")
+            .setDesc("Intenta arreglar inconsistencias en data.json.")
+            .addButton(b => b
+                .setButtonText("Reparar")
+                .onClick(async () => {
+                    await this.storage.repairData();
+                    new Notice("Reparación completada.");
+                }));
+	}
+}
+
+===== src/ui/settings.ts =====
+
+import { App, Plugin, PluginSettingTab, Setting, Notice } from "obsidian";
+import { HabitStorage } from "../core/storage";
+import { generateMonthlyReport } from "../utils/reports";
+import { exportJsonBackup, exportCsv, importJsonBackup, repairDatabase } from "../utils/backup";
+
+export class HabitSettingsTab extends PluginSettingTab {
+	storage: HabitStorage;
+
+	constructor(app: App, plugin: Plugin, storage: HabitStorage) {
+		super(app, plugin);
+		this.storage = storage;
+	}
+
+	display(): void {
+		const { containerEl } = this;
+		containerEl.empty();
+
+		const data = this.storage.getData();
+		const s = data.settingsSnapshot;
+
+		containerEl.createEl("h2", { text: "Habit Loop – Configuración" });
+
+		// --- Notas ---
+		new Setting(containerEl).setHeading().setName("Notas y Registros");
+
+		new Setting(containerEl)
+			.setName("Carpeta de notas")
+			.addText(t => t.setValue(s.notesFolder).onChange(async v => {
+				s.notesFolder = v; await this.storage.save();
+			}));
+
+		new Setting(containerEl)
+			.setName("Abrir nota al crear")
+			.addToggle(t => t.setValue(s.openNoteAfterCreate).onChange(async v => {
+				s.openNoteAfterCreate = v; await this.storage.save();
+			}));
+
+		// --- Interfaz ---
+		new Setting(containerEl).setHeading().setName("Interfaz");
+
+		new Setting(containerEl)
+			.setName("Orientación")
+			.addDropdown(d => d
+				.addOption("recent-right", "Recientes derecha (→)")
+				.addOption("recent-left", "Recientes izquierda (←)")
+				.setValue(s.dayBarOrientation)
+				.onChange(async v => {
+					s.dayBarOrientation = v as any; await this.storage.save();
+				}));
+
+		new Setting(containerEl)
+			.setName("Ocultar completados hoy")
+			.addToggle(t => t.setValue(s.autoHideCompletedToday).onChange(async v => {
+				s.autoHideCompletedToday = v; await this.storage.save();
+			}));
+
+		// --- Datos ---
+		new Setting(containerEl).setHeading().setName("Datos y Mantenimiento");
+
+		new Setting(containerEl).setName("Backups")
+			.addButton(b => b.setButtonText("Exportar JSON").onClick(async () => {
+				await exportJsonBackup(this.app, this.storage);
+				new Notice("Backup JSON creado.");
+			}))
+			.addButton(b => b.setButtonText("Exportar CSV").onClick(async () => {
+				await exportCsv(this.app, this.storage);
+				new Notice("Backup CSV creado.");
+			}));
+
+        let importPath = "";
+        new Setting(containerEl).setName("Restaurar")
+            .setDesc("Ruta del archivo JSON")
+            .addText(t => t.setPlaceholder("Habit Backups/backup.json").onChange(v => importPath = v))
+            .addButton(b => b.setButtonText("Importar").setWarning().onClick(async () => {
+                if(importPath) {
+                    try {
+                        await importJsonBackup(this.app, this.storage, importPath);
+                        new Notice("Restaurado con éxito.");
+                    } catch(e) { new Notice("Error al importar."); }
+                }
+            }));
+
+        new Setting(containerEl).setName("Mantenimiento")
+            .addButton(b => b.setButtonText("Reparar DB").onClick(async () => {
+                await repairDatabase(this.storage);
+                new Notice("Base de datos reparada.");
+            }));
+	}
+}
+
+===== src/ui/modals/EditHabitModal.ts =====
+
+import { App, Modal, Setting } from "obsidian";
+import { HabitStorage } from "../../core/storage";
+import { Habit, HabitType, GoalType } from "../../core/types";
+import { updateHabit } from "../../core/habits";
+
+export class EditHabitModal extends Modal {
+	private storage: HabitStorage;
+	private habit: Habit;
+	private onSaved: () => void;
+
+	constructor(app: App, storage: HabitStorage, habit: Habit, onSaved: () => void) {
+		super(app);
+		this.storage = storage;
+		this.habit = habit;
+		this.onSaved = onSaved;
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("habit-modal");
+		contentEl.createEl("h2", { text: "Editar Hábito" });
+
+		let name = this.habit.name;
+		let color = this.habit.color;
+		let icon = this.habit.icon || "";
+		let type = this.habit.type;
+		let goalVal = this.habit.goal?.value;
+		let goalUnit = this.habit.goal?.unit || "";
+		let goalType = this.habit.goal?.type || "atLeast";
+
+		new Setting(contentEl).setName("Nombre")
+			.addText(t => t.setValue(name).onChange(v => name = v));
+
+		new Setting(contentEl).setName("Color")
+			.addColorPicker(c => c.setValue(color).onChange(v => color = v));
+
+		new Setting(contentEl).setName("Icono (Emoji)")
+			.addText(t => t.setValue(icon).onChange(v => icon = v));
+
+		// Tipo y Meta
+		const typeContainer = contentEl.createDiv("ht-type-toggle");
+		const btnYesNo = typeContainer.createEl("button", { text: "Sí / No", cls: "hem-toggle-btn" });
+		const btnQuant = typeContainer.createEl("button", { text: "Numérico", cls: "hem-toggle-btn" });
+		const goalBlock = contentEl.createDiv("ht-goal-block");
+
+		new Setting(goalBlock).setName("Valor Meta")
+			.addText(t => {
+				t.inputEl.type = "number";
+				t.setValue(String(goalVal || "")).onChange(v => goalVal = Number(v));
+			});
+		
+		new Setting(goalBlock).setName("Unidad")
+			.addText(t => t.setValue(goalUnit).onChange(v => goalUnit = v));
+
+		const refresh = () => {
+			if (type === "yesno") {
+				btnYesNo.addClass("is-active"); btnQuant.removeClass("is-active");
+				goalBlock.addClass("is-hidden");
+			} else {
+				btnQuant.addClass("is-active"); btnYesNo.removeClass("is-active");
+				goalBlock.removeClass("is-hidden");
+			}
+		};
+
+		btnYesNo.onclick = () => { type = "yesno"; refresh(); };
+		btnQuant.onclick = () => { type = "quant"; refresh(); };
+		refresh();
+
+		// Footer
+		const footer = contentEl.createDiv("habit-modal-footer");
+		const btnSave = footer.createEl("button", { text: "Guardar Cambios", cls: "mod-cta" });
+
+		btnSave.onclick = async () => {
+			const updated = { ...this.habit };
+			updated.name = name;
+			updated.color = color;
+			updated.icon = icon;
+			updated.type = type;
+			
+			if (type === "quant" && goalVal !== undefined) {
+				updated.goal = { value: goalVal, unit: goalUnit, type: goalType as GoalType };
+			} else {
+				updated.goal = undefined;
+			}
+
+			await updateHabit(this.storage, updated);
+			this.onSaved();
+			this.close();
+		};
+	}
+
+	onClose() { this.contentEl.empty(); }
+}
+
+===== src/ui/modals/AddHabitModal.ts =====
+
+import { App, Modal, Setting, Notice } from "obsidian";
+import { HabitType, GoalType } from "../../core/types";
+
+export interface AddHabitResult {
+	name: string;
+	type: HabitType;
+	goalValue?: number;
+	goalType?: GoalType;
+	unit?: string;
+}
+
+interface AddHabitModalOptions {
+	onCreate: (result: AddHabitResult) => void;
+}
+
+export class AddHabitModal extends Modal {
+	private onCreate: (result: AddHabitResult) => void;
+
+	private nameValue: string = "";
+	private typeValue: HabitType = "yesno";
+	private goalValue: number | undefined;
+	private goalType: GoalType = "atLeast";
+	private unitValue: string = "";
+
+	constructor(app: App, opts: AddHabitModalOptions) {
+		super(app);
+		this.onCreate = opts.onCreate;
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("habit-modal");
+
+		contentEl.createEl("h2", { text: "Nuevo Hábito" });
+
+		// --- Nombre ---
+		new Setting(contentEl)
+			.setName("Nombre")
+			.addText(t => {
+				t.setPlaceholder("Ej. Leer, Meditar...")
+				 .onChange(v => this.nameValue = v);
+				t.inputEl.focus();
+			});
+
+		// --- Tipo ---
+		const typeContainer = contentEl.createDiv("ht-type-toggle");
+		const btnYesNo = typeContainer.createEl("button", { text: "Sí / No", cls: "hem-toggle-btn" });
+		const btnQuant = typeContainer.createEl("button", { text: "Numérico", cls: "hem-toggle-btn" });
+
+		// --- Sección Meta (Oculta por defecto) ---
+		const goalBlock = contentEl.createDiv("ht-goal-block");
+		goalBlock.addClass("is-hidden");
+		
+		new Setting(goalBlock).setName("Meta diaria")
+			.addText(t => {
+				t.setPlaceholder("Valor (ej. 30)")
+				 .onChange(v => this.goalValue = Number(v));
+				t.inputEl.type = "number";
+			});
+		
+		new Setting(goalBlock).setName("Unidad")
+			.addText(t => t.setPlaceholder("min, pag, km...").onChange(v => this.unitValue = v));
+
+		new Setting(goalBlock).setName("Condición")
+			.addDropdown(d => d
+				.addOption("atLeast", "Al menos (≥)")
+				.addOption("atMost", "Máximo (≤)")
+				.addOption("exactly", "Exactamente (=)")
+				.setValue("atLeast")
+				.onChange(v => this.goalType = v as GoalType)
+			);
+
+		// Lógica de Toggle
+		const refreshUI = () => {
+			if (this.typeValue === "yesno") {
+				btnYesNo.addClass("is-active");
+				btnQuant.removeClass("is-active");
+				goalBlock.addClass("is-hidden");
+			} else {
+				btnQuant.addClass("is-active");
+				btnYesNo.removeClass("is-active");
+				goalBlock.removeClass("is-hidden");
+			}
+		};
+
+		btnYesNo.onclick = () => { this.typeValue = "yesno"; refreshUI(); };
+		btnQuant.onclick = () => { this.typeValue = "quant"; refreshUI(); };
+		refreshUI();
+
+		// --- Footer ---
+		const footer = contentEl.createDiv("habit-modal-footer");
+		const btnCancel = footer.createEl("button", { text: "Cancelar" });
+		const btnSave = footer.createEl("button", { text: "Crear", cls: "mod-cta" });
+
+		btnCancel.onclick = () => this.close();
+		btnSave.onclick = () => {
+			if (!this.nameValue.trim()) {
+				new Notice("El nombre es obligatorio");
+				return;
+			}
+			this.onCreate({
+				name: this.nameValue,
+				type: this.typeValue,
+				goalValue: this.goalValue,
+				goalType: this.goalType,
+				unit: this.unitValue
+			});
+			this.close();
+		};
+	}
+
+	onClose() { this.contentEl.empty(); }
+}
+
+===== src/ui/modals/AnalyticsModal.ts =====
+
+// src/ui/modals/AnalyticsModal.ts
+
+import { App, Modal } from "obsidian";
+import Chart from "chart.js/auto"; // Asume que está instalado vía npm
+import { Habit } from "../../core/types";
+import { 
+    getOverallStats, getTrendSummary, buildScoreSeries, 
+    buildHistorySeries, buildHeatmapData 
+} from "../../core/analytics";
+
+export class AnalyticsModal extends Modal {
+	habit: Habit;
+	charts: Chart[] = [];
+
+	constructor(app: App, habit: Habit) {
+		super(app);
+		this.habit = habit;
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("habit-analytics-modal");
+
+        // DATA PREP
+		const overall = getOverallStats(this.habit);
+		const trends = getTrendSummary(this.habit);
+
+		// HEADER
+		const header = contentEl.createDiv("ham-header");
+		header.createEl("h2", { text: this.habit.name });
+		header.createSpan({ cls: "ham-pill", text: `${overall.percent}% Score` });
+
+        // METRICS GRID
+        const grid = contentEl.createDiv("ham-grid");
+        
+        const addMetric = (label: string, val: string) => {
+            const m = grid.createDiv("ham-metric");
+            m.createDiv("metric-val").setText(val);
+            m.createDiv("metric-label").setText(label);
+        };
+        
+        addMetric("Total OK", `${overall.ok}`);
+        addMetric("Último Mes", `${trends.monthDelta >= 0 ? '+' : ''}${trends.monthDelta}%`);
+        addMetric("Último Año", `${trends.yearDelta >= 0 ? '+' : ''}${trends.yearDelta}%`);
+
+		// GRÁFICO: SCORE TIMELINE
+		const scoreCard = contentEl.createDiv("ham-chart-container");
+        scoreCard.createEl("h3", {text: "Fuerza del Hábito"});
+		const canvasScore = scoreCard.createEl("canvas");
+        
+        const scoreData = buildScoreSeries(this.habit, "year"); // Default 1 year
+        
+        this.charts.push(new Chart(canvasScore, {
+            type: 'line',
+            data: {
+                labels: scoreData.labels,
+                datasets: [{
+                    label: 'Score %',
+                    data: scoreData.values,
+                    borderColor: '#8ab4f8',
+                    backgroundColor: 'rgba(138, 180, 248, 0.1)',
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { min: 0, max: 100, display: false }, x: { display: false } },
+                plugins: { legend: { display: false } }
+            }
+        }));
+
+        // GRÁFICO: HISTORY BARS
+        const histCard = contentEl.createDiv("ham-chart-container");
+        histCard.createEl("h3", {text: "Historial Mensual"});
+        const canvasHist = histCard.createEl("canvas");
+        
+        const histData = buildHistorySeries(this.habit, "year");
+        
+        this.charts.push(new Chart(canvasHist, {
+            type: 'bar',
+            data: {
+                labels: histData.labels,
+                datasets: [{
+                    label: 'Días / Valor',
+                    data: histData.values,
+                    backgroundColor: '#8ab4f8',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, display: false }, x: { grid: { display: false } } },
+                plugins: { legend: { display: false } }
+            }
+        }));
+	}
+
+	onClose(): void {
+        // Limpieza de memoria Chart.js
+        this.charts.forEach(c => c.destroy());
+		this.contentEl.empty();
+	}
+}
+
+===== src/ui/modals/HabitDetailModal.ts =====
+
+import { App, Modal } from "obsidian";
+// CORRECCIÓN: Usar HabitStorage
+import { HabitStorage } from "../../core/storage";
+// CORRECCIÓN: Usar Habit
+import { Habit } from "../../core/types";
+import {
+	getStreakInfoForHabit,
+	getOverallScoreForHabit,
+	getWeekdayStatsForHabit,
+	getHabitDateRange,
+	WeekdayKey
+} from "../../core/analytics";
+
+interface HabitDetailModalOptions {
+	storage: HabitStorage;
+	habit: Habit;
+}
+
+export class HabitDetailModal extends Modal {
+	private storage: HabitStorage;
+	private habit: Habit;
+
+	constructor(app: App, opts: HabitDetailModalOptions) {
+		super(app);
+		this.storage = opts.storage;
+		this.habit = opts.habit;
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("habit-entry-modal");
+
+		const title = contentEl.createEl("h2", {
+			text: this.habit.name
+		});
+		title.style.marginBottom = "8px";
+
+		// Rango de fechas del hábito
+		const range = getHabitDateRange(this.storage, this.habit.id);
+		const rangeText =
+			range.from && range.to
+				? `${range.from} → ${range.to}`
+				: "Sin registros aún";
+
+		contentEl.createEl("div", {
+			cls: "hem-date",
+			text: `Rango: ${rangeText}`
+		});
+
+		// ---------------------------------------------------------------------
+		// Resumen de score global
+		// ---------------------------------------------------------------------
+		const overall = getOverallScoreForHabit(
+			this.storage,
+			this.habit.id
+		);
+
+		const summarySection = contentEl.createEl("div", {
+			cls: "hem-field"
+		});
+		summarySection.createEl("div", {
+			cls: "hem-label",
+			text: "Resumen"
+		});
+
+		const summaryText = summarySection.createEl("div");
+		summaryText.style.fontSize = "0.85rem";
+
+		if (overall.total === 0) {
+			summaryText.setText(
+				"Aún no hay suficientes datos para calcular un score."
+			);
+		} else {
+			summaryText.setText(
+				`Días OK: ${overall.ok} / ${overall.total}  (${overall.percent}%)`
+			);
+		}
+
+		// ---------------------------------------------------------------------
+		// Rachas
+		// ---------------------------------------------------------------------
+		const streak = getStreakInfoForHabit(this.storage, this.habit.id);
+
+		const streakSection = contentEl.createEl("div", {
+			cls: "hem-field"
+		});
+		streakSection.createEl("div", {
+			cls: "hem-label",
+			text: "Rachas"
+		});
+
+		const streakList = streakSection.createEl("ul");
+		streakList.style.margin = "0";
+		streakList.style.paddingLeft = "1.2rem";
+		streakList.style.fontSize = "0.85rem";
+
+		const liCurrent = streakList.createEl("li");
+		liCurrent.setText(`Racha actual: ${streak.currentStreak} día(s)`);
+
+		const liBest = streakList.createEl("li");
+		liBest.setText(`Mejor racha histórica: ${streak.bestStreak} día(s)`);
+
+		if (streak.lastDate) {
+			const liLast = streakList.createEl("li");
+			liLast.setText(`Último día con registro: ${streak.lastDate}`);
+		}
+
+		// ---------------------------------------------------------------------
+		// Distribución por día de la semana
+		// ---------------------------------------------------------------------
+		const weekdaySection = contentEl.createEl("div", {
+			cls: "hem-field"
+		});
+		weekdaySection.createEl("div", {
+			cls: "hem-label",
+			text: "Distribución por día de la semana"
+		});
+
+		const weekdayStats = getWeekdayStatsForHabit(
+			this.storage,
+			this.habit.id
+		);
+
+		const table = weekdaySection.createEl("table");
+		table.style.width = "100%";
+		table.style.borderCollapse = "collapse";
+		table.style.fontSize = "0.8rem";
+
+		const thead = table.createEl("thead");
+		const headRow = thead.createEl("tr");
+
+		const headers = ["Día", "OK / Total", "% OK"];
+		for (const h of headers) {
+			const th = headRow.createEl("th", { text: h });
+			th.style.textAlign = "left";
+			th.style.padding = "2px 4px";
+			th.style.borderBottom = "1px solid var(--background-modifier-border)";
+		}
+
+		const tbody = table.createEl("tbody");
+
+		const order: WeekdayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+		const labels: Record<WeekdayKey, string> = {
+			Mon: "Lun",
+			Tue: "Mar",
+			Wed: "Mié",
+			Thu: "Jue",
+			Fri: "Vie",
+			Sat: "Sáb",
+			Sun: "Dom"
+		};
+
+		for (const key of order) {
+			const stats = weekdayStats[key];
+			const row = tbody.createEl("tr");
+
+			const cDay = row.createEl("td", {
+				text: labels[key]
+			});
+			cDay.style.padding = "2px 4px";
+
+			const cRatio = row.createEl("td", {
+				text: `${stats.ok} / ${stats.total}`
+			});
+			cRatio.style.padding = "2px 4px";
+
+			const cPercent = row.createEl("td", {
+				text: `${stats.percent}%`
+			});
+			cPercent.style.padding = "2px 4px";
+		}
+
+		// ---------------------------------------------------------------------
+		// Pie de modal
+		// ---------------------------------------------------------------------
+		const footer = contentEl.createEl("div", {
+			cls: "hem-actions"
+		});
+
+		const closeBtn = footer.createEl("button", {
+			cls: "ht-btn-secondary",
+			text: "Cerrar"
+		});
+
+		closeBtn.addEventListener("click", () => {
+			this.close();
+		});
+	}
+}
+
+===== src/ui/modals/CreateHabitModal.ts =====
+
+import { App, Modal, Setting, Notice } from "obsidian";
+import { HabitStorage } from "../../core/storage";
+import { createHabit } from "../../core/habits";
+import { HabitType, GoalType } from "../../core/types";
+
+export class CreateHabitModal extends Modal {
+	storage: HabitStorage;
+
+	constructor(app: App, storage: HabitStorage) {
+		super(app);
+		this.storage = storage;
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("habit-modal");
+		contentEl.createEl("h2", { text: "Nuevo hábito" });
+
+		let name = "";
+		let type: HabitType = "yesno";
+		
+        // Variables para Cuantitativo
+        let goalValue: number | undefined = undefined;
+		let goalType: GoalType = "atLeast";
+		let unit = "";
+
+		new Setting(contentEl)
+			.setName("Nombre")
+			.addText((t) => {
+				t.setPlaceholder("Leer, Meditar, Correr...")
+					.onChange((v) => (name = v));
+                t.inputEl.focus();
+			});
+
+        // Selector visual de Tipo
+		const typeSetting = new Setting(contentEl).setName("Tipo de hábito");
+		const typeContainer = typeSetting.controlEl.createDiv("ht-type-toggle");
+
+		const btnYesNo = typeContainer.createEl("button", { text: "Sí / No", cls: "hem-toggle-btn" });
+		const btnQuant = typeContainer.createEl("button", { text: "Numérico", cls: "hem-toggle-btn" });
+		
+        // Configuración de Meta (Goal) - Inicialmente oculta
+		const goalContainer = contentEl.createDiv("ht-goal-block");
+        goalContainer.addClass("is-hidden"); // Oculto por defecto (yesno)
+
+		const goalSetting = new Setting(goalContainer).setName("Objetivo diario");
+		goalSetting.addText((t) => {
+			t.setPlaceholder("Valor (ej: 20)")
+				.onChange((v) => {
+					const n = Number(v);
+					goalValue = isNaN(n) ? undefined : n;
+				});
+            t.inputEl.type = "number";
+		});
+		
+        new Setting(goalContainer).setName("Unidad")
+            .addText((t) => {
+                t.setPlaceholder("min, págs, km...")
+                    .onChange((v) => (unit = v));
+            });
+        
+        // Selector de tipo de meta
+		new Setting(goalContainer).setName("Condición")
+            .addDropdown(d => d
+                .addOption("atLeast", "Al menos (≥)")
+                .addOption("atMost", "Como máximo (≤)")
+                .addOption("exactly", "Exactamente (=)")
+                .setValue("atLeast")
+                .onChange(v => goalType = v as GoalType)
+            );
+
+        // Lógica de Toggle
+        const refreshTypeButtons = () => {
+			if (type === "yesno") {
+                btnYesNo.addClass("is-active");
+                btnQuant.removeClass("is-active");
+                goalContainer.addClass("is-hidden");
+            } else {
+                btnQuant.addClass("is-active");
+                btnYesNo.removeClass("is-active");
+                goalContainer.removeClass("is-hidden");
+            }
+		};
+
+		btnYesNo.onclick = () => { type = "yesno"; refreshTypeButtons(); };
+		btnQuant.onclick = () => { type = "quant"; refreshTypeButtons(); };
+		refreshTypeButtons(); // Estado inicial
+
+        // Footer
+		const footer = contentEl.createDiv("habit-modal-footer");
+		const cancelBtn = footer.createEl("button", { text: "Cancelar" });
+		const createBtn = footer.createEl("button", { text: "Crear", cls: "mod-cta" });
+
+		cancelBtn.onclick = () => this.close();
+		
+        createBtn.onclick = async () => {
+			if (!name.trim()) {
+				new Notice("El nombre es obligatorio.");
+				return;
+			}
+            
+            try {
+                await createHabit(this.storage, {
+                    name: name.trim(),
+                    type,
+                    color: "#FF8A65", // Color por defecto si no se elige
+                    // CORRECCIÓN: Se añade frequency, requerido por la interfaz
+                    frequency: { mode: "daily" }, 
+                    goal: (type === "quant" && goalValue != null) 
+                        ? { type: goalType, value: goalValue, unit: unit.trim() || undefined }
+                        : undefined
+                });
+                new Notice(`Hábito "${name}" creado.`);
+                this.close();
+            } catch (e) {
+                new Notice("Error al crear el hábito.");
+                console.error(e);
+            }
+		};
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
+}
+
+===== src/ui/modals/HabitAnalyticsModal.ts =====
+
+import { App, Modal } from "obsidian";
+import Chart from "chart.js/auto";
+import { Habit } from "../../core/types";
+import { HabitStorage } from "../../core/storage";
+import {
+	getStreakInfoForHabit,
+	getOverallScoreForHabit,
+	getWeekdayStatsForHabit,
+	getHeatmapDataForHabit,
+	getHabitDateRange,
+	buildScoreSeries,
+	buildHistorySeries,
+	WeekdayKey,
+    // NUEVO: Importar funciones de Mood
+    getMoodDistribution,
+    getAverageEnergy
+} from "../../core/analytics";
+
+interface AnalyticsProps {
+	storage: HabitStorage;
+	habit: Habit;
+}
+
+type TimeRange = "week" | "month" | "year";
+
+export class HabitAnalyticsModal extends Modal {
+	private storage: HabitStorage;
+	private habit: Habit;
+	private charts: Chart[] = [];
+	private currentRange: TimeRange = "month"; 
+
+	constructor(app: App, props: AnalyticsProps) {
+		super(app);
+		this.storage = props.storage;
+		this.habit = props.habit;
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("habit-analytics-modal");
+
+		const overall = getOverallScoreForHabit(this.storage, this.habit.id);
+		const streak = getStreakInfoForHabit(this.storage, this.habit.id);
+		
+		// --- HEADER ---
+		const header = contentEl.createDiv("ham-header");
+		header.style.borderBottom = `2px solid ${this.habit.color}`;
+		
+		const titleRow = header.createDiv("ham-title-row");
+		titleRow.createEl("h2", { text: this.habit.name });
+		
+		// Selector de Rango
+		const rangeControls = header.createDiv("ham-range-controls");
+		this.createRangeBtn(rangeControls, "week", "7D");
+		this.createRangeBtn(rangeControls, "month", "30D");
+		this.createRangeBtn(rangeControls, "year", "1A");
+
+		// --- METRICS GRID ---
+		const grid = contentEl.createDiv("ham-summary-grid");
+		const addCard = (t: string, v: string, s: string) => {
+			const c = grid.createDiv("ham-card");
+			c.createDiv("ham-card-title").setText(t);
+			const val = c.createDiv("ham-card-value");
+			val.setText(v);
+			val.style.color = this.habit.color;
+			c.createDiv("ham-card-sub").setText(s);
+		};
+
+		addCard("Score", `${overall.percent}%`, `${overall.ok}/${overall.total} días`);
+		addCard("Racha", `${streak.currentStreak}`, `Máxima: ${streak.bestStreak}`);
+
+		// --- CONTENEDOR DE GRÁFICOS DINÁMICO ---
+		const chartsWrapper = contentEl.createDiv("ham-charts-wrapper");
+		this.renderCharts(chartsWrapper);
+
+		// --- WEEKLY TABLE ---
+		contentEl.createDiv("ham-section-title").setText("Patrón Semanal");
+		const stats = getWeekdayStatsForHabit(this.storage, this.habit.id);
+		const table = contentEl.createEl("table", { cls: "ham-weekday-table" });
+		const days: WeekdayKey[] = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+		
+		days.forEach(d => {
+			const row = table.createEl("tr");
+			row.createEl("td", { text: d }).style.width = "40px";
+			const barCell = row.createEl("td");
+			const bg = barCell.createDiv();
+			bg.style.background = "var(--background-modifier-border)";
+			bg.style.height = "6px";
+			bg.style.width = "100%";
+			bg.style.borderRadius = "3px";
+			
+			const fill = bg.createDiv();
+			fill.style.background = this.habit.color;
+			fill.style.height = "100%";
+			fill.style.width = `${stats[d].percent}%`;
+			fill.style.borderRadius = "3px";
+
+			row.createEl("td", { text: `${stats[d].percent}%` }).style.textAlign = "right";
+		});
+	}
+
+	private createRangeBtn(container: HTMLElement, range: TimeRange, label: string) {
+		const btn = container.createEl("button", { cls: "ham-range-btn", text: label });
+		if (this.currentRange === range) btn.addClass("is-active");
+		
+		btn.onclick = () => {
+			this.currentRange = range;
+			container.querySelectorAll(".ham-range-btn").forEach(b => b.removeClass("is-active"));
+			btn.addClass("is-active");
+			const wrapper = this.contentEl.querySelector(".ham-charts-wrapper") as HTMLElement;
+			if (wrapper) {
+				wrapper.empty();
+				this.renderCharts(wrapper);
+			}
+		};
+	}
+
+	private renderCharts(container: HTMLElement) {
+        // NUEVO: Obtener promedio de energía
+        const avgEnergy = getAverageEnergy(this.habit, this.currentRange);
+        
+        // --- 1. Bloque Contexto (Energía y Ánimo) ---
+        container.createDiv("ham-section-title").setText("Contexto (Energía y Ánimo)");
+        const contextGrid = container.createDiv("ham-summary-grid");
+        
+        // Tarjeta Energía
+        const energyCard = contextGrid.createDiv("ham-card");
+        energyCard.createDiv("ham-card-title").setText("Energía Promedio");
+        const enVal = energyCard.createDiv("ham-card-value");
+        enVal.setText(avgEnergy === "-" ? "-" : `${avgEnergy}/5`);
+        enVal.style.color = "#F9A825"; // Amarillo oscuro
+        energyCard.createDiv("ham-card-sub").setText("En días completados");
+
+        // Tarjeta Gráfico Mood (Donut)
+        const moodCard = contextGrid.createDiv("ham-card");
+        moodCard.style.position = "relative";
+        moodCard.style.height = "160px"; // Altura fija para el donut
+        moodCard.style.display = "flex";
+        moodCard.style.alignItems = "center";
+        moodCard.style.justifyContent = "center";
+        
+        const moodCanvas = moodCard.createEl("canvas");
+
+		// --- 2. Gráficos Principales ---
+		container.createDiv("ham-section-title").setText("Tendencia");
+		const scoreContainer = container.createDiv("ham-chart-container");
+		scoreContainer.style.height = "200px";
+		scoreContainer.style.position = "relative";
+		const scoreCanvas = scoreContainer.createEl("canvas");
+
+		container.createDiv("ham-section-title").setText("Historial");
+		const histContainer = container.createDiv("ham-chart-container");
+		histContainer.style.height = "200px";
+		histContainer.style.position = "relative";
+		const histCanvas = histContainer.createEl("canvas");
+
+		// Renderizado
+		requestAnimationFrame(() => {
+			this.charts.forEach(c => c.destroy());
+			this.charts = [];
+
+            // --- CHART 0: MOOD (DONUT) ---
+            const moodData = getMoodDistribution(this.habit, this.currentRange);
+            const ctxMood = moodCanvas.getContext("2d");
+            if (ctxMood && moodData.data.length > 0) {
+                // Mapeo de colores para emojis
+                const moodColors: Record<string, string> = {
+                    "😫": "#ef5350", // Rojo
+                    "😐": "#bdbdbd", // Gris
+                    "🙂": "#66bb6a", // Verde
+                    "😄": "#42a5f5", // Azul
+                    "🔥": "#ffca28"  // Ambar/Fuego
+                };
+                
+                const bgColors = moodData.labels.map(l => moodColors[l] || "#999");
+
+                this.charts.push(new Chart(ctxMood, {
+                    type: 'doughnut',
+                    data: {
+                        labels: moodData.labels,
+                        datasets: [{
+                            data: moodData.data,
+                            backgroundColor: bgColors,
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { 
+                            legend: { position: 'right', labels: { boxWidth: 12, font: {size: 10} } } 
+                        },
+                        layout: { padding: 10 }
+                    }
+                }));
+            } else if (moodData.data.length === 0) {
+                // Si no hay datos, mostrar texto
+                moodCard.empty();
+                moodCard.createDiv({text: "Sin datos de ánimo", cls: "ht-empty", attr: {style: "font-size: 0.8em;"}});
+            }
+
+			// --- CHART 1: LINE SCORE ---
+			const scoreData = buildScoreSeries(this.habit, this.currentRange);
+			const ctxScore = scoreCanvas.getContext("2d");
+			if (ctxScore) {
+				const grad = ctxScore.createLinearGradient(0, 0, 0, 200);
+				grad.addColorStop(0, this.habit.color);
+				grad.addColorStop(1, "rgba(0,0,0,0)");
+
+				this.charts.push(new Chart(ctxScore, {
+					type: "line",
+					data: {
+						labels: scoreData.labels,
+						datasets: [{
+							label: "Score",
+							data: scoreData.values,
+							borderColor: this.habit.color,
+							backgroundColor: grad,
+							fill: true,
+							tension: 0.3,
+							pointRadius: 3,
+							pointBackgroundColor: "var(--background-primary)",
+							pointBorderColor: this.habit.color,
+							pointBorderWidth: 2
+						}]
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						interaction: { intersect: false, mode: 'index' },
+						scales: { 
+							x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, 
+							y: { display: false, min: 0, max: 105 } 
+						},
+						plugins: { legend: { display: false } }
+					}
+				}));
+			}
+
+			// --- CHART 2: BAR HISTORY ---
+			const histData = buildHistorySeries(this.habit, this.currentRange);
+			const ctxHist = histCanvas.getContext("2d");
+			if (ctxHist) {
+				this.charts.push(new Chart(ctxHist, {
+					type: "bar",
+					data: {
+						labels: histData.labels,
+						datasets: [{
+							label: "Valor",
+							data: histData.values,
+							backgroundColor: this.habit.color,
+							borderRadius: 3
+						}]
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						scales: { 
+							x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, 
+							y: { grid: { color: "var(--background-modifier-border)" }, beginAtZero: true } 
+						},
+						plugins: { legend: { display: false } }
+					}
+				}));
+			}
+		});
+	}
+
+	onClose() {
+		this.charts.forEach(c => c.destroy());
+		this.contentEl.empty();
+	}
+}
+
+===== src/ui/modals/EntryModal.ts =====
+
+import { App, Modal, Setting, Notice } from "obsidian";
+import { HabitStorage } from "../../core/storage";
+import { Habit, HabitEntry } from "../../core/types";
+import { setEntry, deleteEntry, evalHabitEntry } from "../../core/entries";
+import { createHabitNote, NoteSettings } from "../../utils/notes";
+
+interface EntryModalOptions {
+	storage: HabitStorage;
+	habit: Habit;
+	date: string;
+	entry?: HabitEntry;
+	onSave: (res: any) => void;
+	onDelete: () => void;
+}
+
+export class EntryModal extends Modal {
+	private storage: HabitStorage;
+	private habit: Habit;
+	private date: string;
+	private entry?: HabitEntry;
+	private onSave: (res: any) => void;
+	private onDelete: () => void;
+
+	private yesNoValue: "✔" | "✖" = "✔";
+	private quantValue: number = 0;
+	private notes: string = "";
+    
+    // Contexto
+    private energyValue: number = 3;
+    private moodValue: string = "";
+
+	constructor(app: App, opts: EntryModalOptions) {
+		super(app);
+		this.storage = opts.storage;
+		this.habit = opts.habit;
+		this.date = opts.date;
+		this.entry = opts.entry;
+		this.onSave = opts.onSave;
+		this.onDelete = opts.onDelete;
+
+		// Inicializar valores
+		if (this.habit.type === "yesno") {
+			this.yesNoValue = this.entry?.value === "✖" ? "✖" : "✔";
+		} else {
+			this.quantValue = typeof this.entry?.value === "number" ? this.entry.value : 0;
+		}
+        
+        this.energyValue = this.entry?.energy ?? 3;
+        this.moodValue = this.entry?.mood ?? "";
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("habit-entry-modal");
+
+		contentEl.createEl("h2", { text: this.habit.name });
+		contentEl.createDiv({ cls: "ht-entry-date", text: this.date });
+
+		// Feedback visual
+		const ev = evalHabitEntry(this.habit, this.entry);
+		if (ev === "OK") contentEl.addClass("ht-entry-ok");
+		else if (ev === "NO") contentEl.addClass("ht-entry-no");
+
+		// --- Input Valor ---
+		if (this.habit.type === "yesno") {
+			const row = contentEl.createDiv("ht-entry-yesno-row");
+			const btnOk = row.createEl("button", { text: "✔" });
+			const btnNo = row.createEl("button", { text: "✖" });
+
+			const update = () => {
+				btnOk.toggleClass("is-active", this.yesNoValue === "✔");
+				btnNo.toggleClass("is-active", this.yesNoValue === "✖");
+			};
+			btnOk.onclick = () => { this.yesNoValue = "✔"; update(); };
+			btnNo.onclick = () => { this.yesNoValue = "✖"; update(); };
+			update();
+		} else {
+			new Setting(contentEl).setName("Valor")
+				.setDesc(this.habit.goal ? `Meta: ${this.habit.goal.value}` : "")
+				.addText(t => {
+					t.inputEl.type = "number";
+					t.setValue(String(this.quantValue))
+					 .onChange(v => this.quantValue = Number(v));
+				});
+		}
+
+        // --- Contexto ---
+        contentEl.createEl("h4", { text: "Contexto", cls: "ham-section-title" });
+        
+        const energyContainer = contentEl.createDiv("ht-context-row");
+        new Setting(energyContainer)
+            .setName("Nivel de Energía")
+            .setDesc("1 (Baja) - 5 (Alta)")
+            .addSlider(s => s
+                .setLimits(1, 5, 1)
+                .setValue(this.energyValue)
+                .setDynamicTooltip()
+                .onChange(v => this.energyValue = v)
+            );
+
+        const moodContainer = contentEl.createDiv("ht-mood-selector");
+        const moods = ["😫", "😐", "🙂", "😄", "🔥"];
+        moods.forEach(m => {
+            const btn = moodContainer.createEl("button", { text: m, cls: "ht-mood-btn" });
+            if (this.moodValue === m) btn.addClass("is-selected");
+            btn.onclick = () => {
+                this.moodValue = m;
+                moodContainer.querySelectorAll(".ht-mood-btn").forEach(b => b.removeClass("is-selected"));
+                btn.addClass("is-selected");
+            };
+        });
+
+		// --- Notas ---
+		new Setting(contentEl).setName("Nota del día")
+			.addTextArea(t => {
+				t.setPlaceholder("Opcional...")
+                 .setValue(this.entry?.notePath ? "(Nota existente vinculada)" : "")
+				 .onChange(v => this.notes = v);
+			});
+
+		// --- Footer ---
+		const footer = contentEl.createDiv("habit-modal-footer");
+		
+		if (this.entry) {
+			const btnDel = footer.createEl("button", { text: "Borrar Entrada", cls: "mod-warning" });
+			btnDel.onclick = async () => {
+				await deleteEntry(this.storage, this.habit.id, this.date);
+				this.onDelete();
+				this.close();
+			};
+		}
+
+		const btnSave = footer.createEl("button", { text: "Guardar", cls: "mod-cta" });
+		btnSave.onclick = async () => {
+			const val = this.habit.type === "yesno" ? this.yesNoValue : this.quantValue;
+			const s = this.storage.getData().settingsSnapshot;
+			let notePath = this.entry?.notePath;
+
+			// Mapeo correcto de tipos
+			const noteSettings: NoteSettings = {
+				folder: s.notesFolder,
+				filenamePattern: s.noteFilenamePattern,
+				template: s.noteTemplate,
+				openAfterCreate: s.openNoteAfterCreate, // Mapeo correcto
+				askBeforeCreate: s.askBeforeCreateNote  // Mapeo correcto
+			};
+
+            // CORRECCIÓN AQUÍ: Usar s.openNoteAfterCreate
+			if (this.notes.trim() || s.openNoteAfterCreate) {
+				if (s.askBeforeCreateNote) {
+					if (confirm("¿Crear nota para este registro?")) {
+						notePath = await createHabitNote(this.app, noteSettings, this.habit, this.date, String(val), this.notes);
+					}
+				} else {
+					notePath = await createHabitNote(this.app, noteSettings, this.habit, this.date, String(val), this.notes);
+				}
+			}
+
+			await setEntry(this.storage, this.habit.id, this.date, val, notePath, {
+                energy: this.energyValue,
+                mood: this.moodValue
+            });
+            
+			this.onSave({ value: val, notePath });
+			this.close();
+		};
+	}
+
+	onClose() { this.contentEl.empty(); }
+}
+
+===== src/ui/views/HomeView.ts =====
+
+import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from "obsidian";
+import { HabitStorage } from "../../core/storage";
+import { Habit, HabitEntry } from "../../core/types";
+import { evalHabitOnDate } from "../../core/entries";
+import { sortHabits, reorderHabits, deleteHabit, archiveHabit } from "../../core/habits";
+import { getEntryForDate } from "../../core/entries"; 
+import { todayString, addDays, weekdayShort } from "../../utils/dates";
+
+// Importar Modales
+import { CreateHabitModal } from "../modals/CreateHabitModal";
+import { EditHabitModal } from "../modals/EditHabitModal";
+import { EntryModal } from "../modals/EntryModal";
+import { HabitAnalyticsModal } from "../modals/HabitAnalyticsModal";
+
+export const HABIT_VIEW_TYPE = "habit-tracker-view";
+
+export class HomeView extends ItemView {
+	storage: HabitStorage;
+	private detachEvents?: () => void;
+    private draggingId: string | null = null;
+
+	constructor(leaf: WorkspaceLeaf, storage: HabitStorage) {
+		super(leaf);
+		this.storage = storage;
+	}
+
+	getViewType(): string { return HABIT_VIEW_TYPE; }
+	getDisplayText(): string { return "Habit Tracker"; }
+	getIcon(): string { return "check-circle-2"; }
+
+	async onOpen(): Promise<void> {
+		this.render();
+		const handler = () => this.render();
+		// Escuchar eventos usando la API de Obsidian
+		this.storage.events.on("changed", handler);
+		this.detachEvents = () => {
+			this.storage.events.off("changed", handler);
+		};
+	}
+
+	async onClose(): Promise<void> {
+		if (this.detachEvents) this.detachEvents();
+	}
+
+	render(): void {
+		const container = this.containerEl;
+		container.empty();
+		container.addClass("habit-tracker-root");
+
+		const data = this.storage.getData();
+		const settings = data.settingsSnapshot;
+        const today = todayString();
+
+		// --- HEADER ---
+		const header = container.createDiv("habit-tracker-header");
+		header.createEl("h2", { text: "Habit Loop", attr: { style: "margin:0;" } });
+        
+        const controls = header.createDiv("ht-header-right");
+
+        // Botón Sort
+        const sortBtn = controls.createEl("button", { cls: "ht-btn", text: `Sort: ${settings.sortMode}` });
+        sortBtn.onclick = async () => {
+             const modes = ["manual", "alpha", "color"];
+             const next = modes[(modes.indexOf(settings.sortMode) + 1) % modes.length] as any;
+             await this.storage.update(d => d.settingsSnapshot.sortMode = next);
+        };
+
+        // Botón Nuevo
+		const addBtn = controls.createEl("button", { cls: "ht-btn mod-cta", text: "+ Hábito" });
+		addBtn.onclick = () => new CreateHabitModal(this.app, this.storage).open();
+
+		// --- PREPARAR DATOS ---
+		// 1. Filtrar
+        let habits = data.habits.filter(h => !h.archived);
+        if (settings.autoHideCompletedToday) {
+            habits = habits.filter(h => evalHabitOnDate(h, today) !== "OK");
+        }
+        // 2. Ordenar
+        habits = sortHabits(habits, settings.sortMode);
+
+        // 3. Fechas (21 días)
+		const dates: string[] = [];
+        let base = today;
+		for (let i = 20; i >= 0; i--) dates.push(addDays(base, -i));
+		if (settings.dayBarOrientation === "recent-left") dates.reverse();
+
+        // --- ESTRUCTURA TABLA ---
+		const main = container.createDiv("ht-main");
+		const leftCol = main.createDiv("ht-main-left");
+		const rightColWrap = main.createDiv("ht-main-right");
+
+		leftCol.createDiv("ht-left-header-spacer").setText("Hábito");
+
+		const scrollStrip = rightColWrap.createDiv("ht-scroll-strip");
+        
+		const dayBar = scrollStrip.createDiv("habit-tracker-day-bar");
+		dates.forEach(date => {
+			const cell = dayBar.createDiv("ht-day-cell");
+			cell.createDiv("ht-day-weekday").setText(weekdayShort(date, settings.firstDayOfWeek));
+			cell.createDiv("ht-day-date").setText(date.slice(5)); // MM-DD
+            if(date === today) cell.addClass("is-today");
+		});
+
+        if (habits.length === 0) {
+            const empty = main.createDiv("ht-empty");
+            empty.setText("No hay hábitos visibles.");
+            empty.style.padding = "20px";
+            empty.style.color = "var(--text-muted)";
+            return;
+        }
+
+		habits.forEach(habit => {
+            this.renderHabitRow(leftCol, scrollStrip, habit, dates, settings.sortMode);
+		});
+	}
+
+    private renderHabitRow(leftCol: HTMLElement, scrollStrip: HTMLElement, habit: Habit, dates: string[], sortMode: string) {
+        // 1. META (Columna Izq)
+        const meta = leftCol.createDiv("ht-habit-meta");
+        
+        // Drag & Drop Logic
+        if (sortMode === "manual") {
+            meta.setAttr("draggable", "true");
+            meta.addClass("ht-draggable");
+            
+            meta.ondragstart = (e) => { 
+                this.draggingId = habit.id; 
+                meta.addClass("is-dragging");
+                e.dataTransfer?.setData("text/plain", habit.id);
+            };
+            meta.ondragend = () => { 
+                this.draggingId = null; 
+                meta.removeClass("is-dragging"); 
+            };
+            meta.ondragover = (e) => { e.preventDefault(); }; 
+            meta.ondrop = async (e) => {
+                e.preventDefault();
+                if (this.draggingId && this.draggingId !== habit.id) {
+                    await reorderHabits(this.storage, this.draggingId, habit.id);
+                }
+            };
+        }
+
+        // Contenido Visual
+        meta.createDiv({ cls: "ht-habit-color", attr: { style: `background-color:${habit.color}` } });
+        if(habit.icon) meta.createSpan({cls: "ht-habit-icon", text: habit.icon});
+        meta.createSpan({cls: "ht-habit-name", text: habit.name});
+
+        // Eventos Click Meta
+        meta.onclick = () => new HabitAnalyticsModal(this.app, {storage: this.storage, habit}).open();
+        
+        meta.oncontextmenu = (e) => {
+            e.preventDefault();
+            const menu = new Menu();
+            menu.addItem(i => i.setTitle("Analíticas").setIcon("bar-chart").onClick(() => new HabitAnalyticsModal(this.app, {storage: this.storage, habit}).open()));
+            menu.addItem(i => i.setTitle("Editar").setIcon("pencil").onClick(() => new EditHabitModal(this.app, this.storage, habit, () => this.render()).open()));
+            menu.addSeparator();
+            menu.addItem(i => i.setTitle("Archivar").setIcon("archive").onClick(() => archiveHabit(this.storage, habit.id)));
+            menu.addItem(i => i.setTitle("Eliminar").setIcon("trash").setWarning(true).onClick(() => {
+                if(confirm(`¿Eliminar ${habit.name}?`)) deleteHabit(this.storage, habit.id);
+            }));
+            menu.showAtMouseEvent(e);
+        };
+
+        // 2. CELDAS (Columna Der)
+        const row = scrollStrip.createDiv("ht-habit-cells-row");
+        
+        dates.forEach(date => {
+            const cell = row.createDiv("ht-habit-cell");
+            const ev = evalHabitOnDate(habit, date);
+            const entry = habit.entries[date];
+
+            const content = cell.createDiv("ht-cell-content");
+
+            if (ev === "OK") {
+                content.addClass("is-done");
+                // Usar setAttr para style seguro
+                content.setAttr("style", `color: ${habit.color}`); 
+                setIcon(content, "check");
+            } else if (ev === "NO") {
+                content.addClass("is-fail");
+                setIcon(content, "x");
+            } else if (entry && typeof entry.value === "number") {
+                 content.addClass("is-done");
+                 content.setAttr("style", `color: ${habit.color}`);
+                 content.createSpan({cls: "ht-cell-value", text: String(entry.value)});
+            } else {
+                content.addClass("is-none");
+            }
+
+            if (entry?.notePath) {
+                const noteIcon = cell.createSpan({cls:"ht-cell-note"});
+                // Click en notita abre el archivo
+                noteIcon.onclick = (e) => {
+                    e.stopPropagation();
+                    const file = this.app.vault.getAbstractFileByPath(entry.notePath!);
+                    if (file instanceof TFile) this.app.workspace.getLeaf(true).openFile(file);
+                };
+            }
+
+            // Click en celda abre EntryModal
+            cell.onclick = () => this.handleCellClick(habit, date, entry);
+        });
+    }
+
+    private handleCellClick(habit: Habit, date: string, entry?: HabitEntry) {
+        // CORRECCIÓN: Ya no pasamos noteSettings, el EntryModal los obtiene internamente
+        new EntryModal(this.app, {
+            storage: this.storage,
+            habit,
+            date,
+            entry,
+            onSave: async (res) => {
+                // Callbacks opcionales si quisieras actualizar algo extra
+            },
+            onDelete: async () => {
+                // Manejado por el modal
+            }
+        }).open();
+    }
+}
