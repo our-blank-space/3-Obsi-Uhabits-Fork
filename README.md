@@ -8,9 +8,9 @@
 |:---:|:---:|
 | ![Dashboard Global](Resources/dashboard_global.png) | ![Crear Hábito](Resources/create_habit.png) |
 
-| **Analíticas Avanzadas** | **Tendencias y Contexto** |
+| **Vista de Cuadrícula** | **Analíticas Avanzadas** |
 |:---:|:---:|
-| ![Analíticas Top](Resources/analytics_top.png) | ![Analíticas Bottom](Resources/analytics_bottom.png) |
+| ![Vista Cuadrícula](Resources/grid_view.png) | ![Analíticas](Resources/analytics_top.png) |
 
 > [!TIP]
 > **Explora el Plugin**: Mira el video de demostración para ver el flujo completo de registro y analíticas.
