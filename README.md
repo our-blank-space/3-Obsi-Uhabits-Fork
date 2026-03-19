@@ -14,7 +14,7 @@
 
 > [!TIP]
 > **Explora el Plugin**: Mira el video de demostración para ver el flujo completo de registro y analíticas.
-> ![Video Demo](Resources/demo.webm)
+> ![Video Demo](Resources/demo.mp4)
 
 ---
 
