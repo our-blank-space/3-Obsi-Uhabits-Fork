@@ -51,8 +51,8 @@ Sin embargo, **si necesitas un proyecto específico y personalizado en Obsidian*
 
 ### ¡Apoya el desarrollo o contacta conmigo!
 
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/andresvega)
-[![PayPal](https://img.shields.io/badge/PayPal-004595?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/andresvega)
+<a href='https://ko-fi.com/D1D61W9BNO' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi3.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+[![PayPal](https://img.shields.io/badge/PayPal-004595?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/AndresFelipeVH)
 
 ---
 
