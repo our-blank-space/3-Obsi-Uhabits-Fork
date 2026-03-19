@@ -14,8 +14,10 @@
 
 > [!TIP]
 > **Explora el Plugin**: Mira el video de demostración para ver el flujo completo de registro y analíticas.
->
-> ![Video Demo](Resources/demo1.mp4)
+
+<div align="center">
+  <video src="https://github.com/our-blank-space/3-Obsi-Uhabits-Fork/blob/main/Resources/demo1.mp4?raw=true" width="100%" controls></video>
+</div>
 
 
 ---
