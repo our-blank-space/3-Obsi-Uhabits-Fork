@@ -13,27 +13,8 @@
 | ![Vista Cuadrícula](Resources/grid_view.png) | ![Analíticas](Resources/analytics_top.png) |
 
 > [!TIP]
-> **Explora el Plugin**: Mira el video de demostración para ver el flujo completo de registro y analíticas.
-
-<div align="center">
-  <a href="https://github.com/our-blank-space/3-Obsi-Uhabits-Fork/blob/main/Resources/demo1.mp4?raw=true">
-    <img src="Resources/grid_view.png" width="100%" alt="Haz clic para ver el video">
-    <br>
-    <b>▶️ Haz clic aquí para ver el video de demostración</b>
-  </a>
-</div>
-
-
----
-
-## ✨ Características Principales
-
-*   **📊 Loop Score:** Algoritmo que mide la fuerza real de tu hábito.
-*   **🧠 Métricas de Contexto:** Registra tu ánimo y energía junto con tus hábitos.
-*   **📈 Analíticas Pro:** Gráficos de tendencia, mapas de calor y distribución de ánimo.
-*   **🔢 Tipos Flexibles:** Soporte para hábitos binarios (Sí/No) y cuantitativos.
-*   **📝 Notas Diarias:** Integración profunda con notas de registro en Markdown.
-*   **📅 Vista Adaptive:** Interfaz fluida con scroll horizontal y organización manual.
+> **Explora el Plugin**: Mira el flujo completo de registro y analíticas en acción.
+> ![Demo GIF](Resources/demo1.gif)
 
 ---
 
@@ -48,7 +29,7 @@ Respetamos la esencia del algoritmo original para traer la mejor experiencia de 
 ## 🚀 Instalación Rápida
 
 ### Manual (Recomendado)
-1. Descarga `main.js`, `manifest.json` y `styles.css` de la última **[Release](https://github.com/tu-usuario/obsidian-habit-tracker/releases)**.
+1. Descarga `main.js`, `manifest.json` y `styles.css` de la última **[Release](https://github.com/our-blank-space/3-Obsi-Uhabits-Fork/releases)**.
 2. Colócalos en `.obsidian/plugins/obsidian-habit-tracker/`.
 3. Activa el plugin en la configuración de Obsidian.
 
@@ -62,14 +43,20 @@ Respetamos la esencia del algoritmo original para traer la mejor experiencia de 
 
 ---
 
-## 💎 Soporte y Proceso
+## 💎 Soporte y Servicios
 
-Este proyecto está en constante evolución. Si encuentras valor en este plugin, considera apoyar su desarrollo:
+¿Te ha resultado útil **Habit Loop Tracker**? Acepto donaciones que se destinan a futuros esfuerzos de desarrollo. Para este proyecto de hobby, no acepto pagos por recompensas de errores o solicitudes de funciones para evitar presiones adicionales.
 
-*   **Donaciones**: [Apóyame en Ko-fi](https://ko-fi.com/andresvega) ☕
-*   **Reportes**: Si encuentras errores o tienes sugerencias, abre un issue en GitHub.
+Sin embargo, **si necesitas un proyecto específico y personalizado en Obsidian**, también puedes contactarme para su desarrollo como un servicio profesional.
 
-Tu apoyo ayuda a mantener este proyecto gratuito, de código abierto y en constante mejora para todos.
+### ¡Apoya el desarrollo o contacta conmigo!
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/andresvega)
+[![PayPal](https://img.shields.io/badge/PayPal-004595?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/andresvega)
+
+---
+
+*Desarrollado con ❤️ para la comunidad de Obsidian.*
 
 ---
 
