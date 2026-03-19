@@ -14,7 +14,7 @@
 
 > [!TIP]
 > **Explora el Plugin**: Mira el video de demostración para ver el flujo completo de registro y analíticas.
-> [![Ver Video](Resources/demo1.mp4)](https://drive.google.com/file/d/1X9g9g9g9g9g9g9g9g9g9g9g9g9g9g9g/view?usp=sharing)
+> <iframe src="https://drive.google.com/file/d/1wKzNOzOdADoz1xTiRS3dN-OGZzcXeFof/preview" width="640" height="480"></iframe>
 
 
 ---
