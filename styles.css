@@ -523,13 +523,13 @@
 }
 
 .modal-content.habit-modal {
-    padding: 24px 50px !important;
+    padding: 20px !important;
     scrollbar-width: thin;
     scrollbar-color: var(--background-modifier-border) transparent;
 }
 
 .modal-content.habit-analytics-modal {
-    padding: 24px 50px !important;
+    padding: 20px !important;
     scrollbar-width: thin;
     scrollbar-color: var(--background-modifier-border) transparent;
 }
@@ -1293,7 +1293,7 @@
 }
 
 .habit-entry-modal .modal-content {
-    padding: 32px !important;
+    padding: 20px !important;
 }
 
 .habit-entry-modal h2 {
