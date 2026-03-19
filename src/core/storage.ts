@@ -19,7 +19,8 @@ const DEFAULT_SETTINGS: HabitPluginSettings = {
 	sortMode: "manual",
 	daysVisible: 21,
 	showDailyProgress: true,
-	confirmArchive: true
+	confirmArchive: true,
+	language: "auto"
 };
 
 export class HabitStorage {

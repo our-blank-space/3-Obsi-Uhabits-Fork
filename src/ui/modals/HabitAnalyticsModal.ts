@@ -2,6 +2,7 @@ import { App, Modal } from "obsidian";
 import Chart from "chart.js/auto";
 import { Habit, HabitEntries } from "../../core/types";
 import { HabitStorage } from "../../core/storage";
+import { t, getWeekdays } from "../../i18n";
 import {
 	getStreakInfoForHabit,
 	getOverallScoreForHabit,
@@ -37,6 +38,9 @@ export class HabitAnalyticsModal extends Modal {
 		contentEl.empty();
 		contentEl.addClass("habit-analytics-modal");
 
+        const settings = this.storage.getData().settingsSnapshot;
+        const lang = settings.language;
+
 		// PRE-LOAD DATA
 		const entries = await this.storage.getEntries(this.habit.id);
 
@@ -45,7 +49,6 @@ export class HabitAnalyticsModal extends Modal {
 
 		// --- HEADER ---
 		const header = contentEl.createDiv("ham-header");
-		// Mantenemos solo el color dinámico del hábito
 		header.style.borderBottom = `2px solid ${this.habit.color}`;
 
 		const titleRow = header.createDiv("ham-title-row");
@@ -53,38 +56,40 @@ export class HabitAnalyticsModal extends Modal {
 
 		// Selector de Rango
 		const rangeControls = header.createDiv("ham-range-controls");
-		this.createRangeBtn(rangeControls, "week", "7D");
-		this.createRangeBtn(rangeControls, "month", "30D");
-		this.createRangeBtn(rangeControls, "year", "1A");
-		this.createRangeBtn(rangeControls, "all", "TODO");
+		this.createRangeBtn(rangeControls, "week", "7D", lang);
+		this.createRangeBtn(rangeControls, "month", "30D", lang);
+		this.createRangeBtn(rangeControls, "year", "1A", lang);
+		this.createRangeBtn(rangeControls, "all", lang === "es" ? "TODO" : "ALL", lang);
 
 		// --- METRICS GRID ---
 		const grid = contentEl.createDiv("ham-summary-grid");
-		const addCard = (t: string, v: string, s: string) => {
+		const addCard = (ti: string, v: string, s: string) => {
 			const c = grid.createDiv("ham-card");
-			c.createDiv("ham-card-title").setText(t);
+			c.createDiv("ham-card-title").setText(ti);
 			const val = c.createDiv("ham-card-value");
 			val.setText(v);
 			val.style.color = this.habit.color;
 			c.createDiv("ham-card-sub").setText(s);
 		};
 
-		addCard("Score", `${overall.percent}%`, `${overall.ok}/${overall.total} días`);
-		addCard("Racha", `${streak.currentStreak}`, `Máxima: ${streak.bestStreak}`);
+		addCard(t("score", lang), `${overall.percent}%`, `${overall.ok}/${overall.total} ${t("days", lang)}`);
+		addCard(t("streak", lang), `${streak.currentStreak}`, `${t("max", lang)}: ${streak.bestStreak}`);
 
 		// --- CONTENEDOR DE GRÁFICOS DINÁMICO ---
 		const chartsWrapper = contentEl.createDiv("ham-charts-wrapper");
-		await this.renderCharts(chartsWrapper, entries);
+		await this.renderCharts(chartsWrapper, entries, lang);
 
 		// --- WEEKLY TABLE ---
-		contentEl.createDiv("ham-section-title").setText("Patrón Semanal");
+		contentEl.createDiv("ham-section-title").setText(t("weekly-pattern", lang));
 		const stats = await getWeekdayStatsForHabit(this.storage, this.habit.id);
 		const table = contentEl.createEl("table", { cls: "ham-weekday-table" });
-		const days: WeekdayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+		const days: WeekdayKey[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // Corregido orden para match con getWeekdays
+		const localizedWeekdays = getWeekdays(lang);
 
-		days.forEach(d => {
+		days.forEach((d, idx) => {
+            // Re-order to Mon-Sun if preferred, but let's keep it simple for now or match localized order
 			const row = table.createEl("tr");
-			row.createEl("td", { text: d });
+			row.createEl("td", { text: localizedWeekdays[idx] });
 			const barCell = row.createEl("td");
 			const bg = barCell.createDiv("ham-progress-bg");
 			
@@ -96,7 +101,7 @@ export class HabitAnalyticsModal extends Modal {
 		});
 	}
 
-	private createRangeBtn(container: HTMLElement, range: TimeRange, label: string) {
+	private createRangeBtn(container: HTMLElement, range: TimeRange, label: string, lang: any) {
 		const btn = container.createEl("button", { cls: "ham-range-btn", text: label });
 		if (this.currentRange === range) btn.addClass("is-active");
 
@@ -108,31 +113,30 @@ export class HabitAnalyticsModal extends Modal {
 			if (wrapper) {
 				wrapper.empty();
 				const entries = await this.storage.getEntries(this.habit.id);
-				await this.renderCharts(wrapper, entries);
+				await this.renderCharts(wrapper, entries, lang);
 			}
 		};
 	}
 
-	private async renderCharts(container: HTMLElement, entries: HabitEntries) {
-		// NUEVO: Obtener promedio de energía
+	private async renderCharts(container: HTMLElement, entries: HabitEntries, lang: any) {
 		const avgEnergy = getAverageEnergy(this.habit, entries, this.currentRange);
 
 		// --- 1. Bloque Contexto (Energía y Ánimo) ---
-		container.createDiv("ham-section-title").setText("Contexto (Energía y Ánimo)");
+		container.createDiv("ham-section-title").setText(t("context-header", lang));
 		const contextGrid = container.createDiv("ham-summary-grid");
 
 		// Tarjeta Energía
 		const energyCard = contextGrid.createDiv("ham-card");
-		energyCard.createDiv("ham-card-title").setText("Energía Promedio");
+		energyCard.createDiv("ham-card-title").setText(t("avg-energy", lang));
 		const enVal = energyCard.createDiv("ham-card-value");
 		enVal.setText(avgEnergy === "-" ? "-" : `${avgEnergy}/5`);
-		enVal.style.color = "#F9A825"; // Amarillo oscuro
-		energyCard.createDiv("ham-card-sub").setText("En días completados");
+		enVal.style.color = "#F9A825";
+		energyCard.createDiv("ham-card-sub").setText(t("on-completed-days", lang));
 
 		// Tarjeta Gráfico Mood (Donut)
 		const moodCard = contextGrid.createDiv("ham-card");
 		moodCard.style.position = "relative";
-		moodCard.style.height = "220px"; // Más altura para legend abajo
+		moodCard.style.height = "220px";
 		moodCard.style.display = "flex";
 		moodCard.style.alignItems = "center";
 		moodCard.style.justifyContent = "center";
@@ -140,19 +144,18 @@ export class HabitAnalyticsModal extends Modal {
 		const moodCanvas = moodCard.createEl("canvas");
 
 		// --- 2. Gráficos Principales ---
-		container.createDiv("ham-section-title").setText("Tendencia");
+		container.createDiv("ham-section-title").setText(t("trend", lang));
 		const scoreContainer = container.createDiv("ham-chart-container");
 		scoreContainer.style.height = "200px";
 		scoreContainer.style.position = "relative";
 		const scoreCanvas = scoreContainer.createEl("canvas");
 
-		container.createDiv("ham-section-title").setText("Historial");
+		container.createDiv("ham-section-title").setText(t("history", lang));
 		const histContainer = container.createDiv("ham-chart-container");
 		histContainer.style.height = "200px";
 		histContainer.style.position = "relative";
 		const histCanvas = histContainer.createEl("canvas");
 
-		// Renderizado
 		requestAnimationFrame(async () => {
 			this.charts.forEach(c => c.destroy());
 			this.charts = [];
@@ -161,13 +164,12 @@ export class HabitAnalyticsModal extends Modal {
 			const moodData = await getMoodDistribution(this.habit, entries, this.currentRange);
 			const ctxMood = moodCanvas.getContext("2d");
 			if (ctxMood && moodData.data.length > 0) {
-				// Mapeo de colores para emojis
 				const moodColors: Record<string, string> = {
-					"😫": "#ef5350", // Agotado / Rojo
-					"😔": "#ffa726", // Triste / Naranja
-					"😑": "#bdbdbd", // Neutro / Gris
-					"🙂": "#66bb6a", // Bien / Verde
-					"🔥": "#ffca28"  // Genial / Ambar
+					"😫": "#ef5350",
+					"😔": "#ffa726",
+					"😑": "#bdbdbd",
+					"🙂": "#66bb6a",
+					"🔥": "#ffca28"
 				};
 
 				const bgColors = moodData.labels.map(l => moodColors[l] || "#999");
@@ -175,7 +177,7 @@ export class HabitAnalyticsModal extends Modal {
 				this.charts.push(new Chart(ctxMood, {
 					type: 'doughnut',
 					data: {
-						labels: moodData.labels,
+						labels: moodData.labels.map(l => t(`mood-${l}` as any, lang)),
 						datasets: [{
 							data: moodData.data,
 							backgroundColor: bgColors,
@@ -191,9 +193,8 @@ export class HabitAnalyticsModal extends Modal {
 								position: 'bottom', 
 								labels: { 
 									boxWidth: 12, 
-									font: { size: 14, family: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' },
-									padding: 8,
-									usePointStyle: false
+									font: { size: 12 },
+									padding: 8
 								} 
 							}
 						},
@@ -201,9 +202,8 @@ export class HabitAnalyticsModal extends Modal {
 					}
 				}));
 			} else if (moodData.data.length === 0) {
-				// Si no hay datos, mostrar texto
 				moodCard.empty();
-				moodCard.createDiv({ text: "Sin datos de ánimo", cls: "ht-empty", attr: { style: "font-size: 0.8em;" } });
+				moodCard.createDiv({ text: t("no-mood-data", lang), cls: "ht-empty", attr: { style: "font-size: 0.8em;" } });
 			}
 
 			// --- CHART 1: LINE SCORE ---
@@ -219,7 +219,7 @@ export class HabitAnalyticsModal extends Modal {
 					data: {
 						labels: scoreData.labels,
 						datasets: [{
-							label: "Score",
+							label: t("score", lang),
 							data: scoreData.values,
 							borderColor: this.habit.color,
 							backgroundColor: grad,
@@ -253,7 +253,7 @@ export class HabitAnalyticsModal extends Modal {
 					data: {
 						labels: histData.labels,
 						datasets: [{
-							label: "Valor",
+							label: t("value", lang),
 							data: histData.values,
 							backgroundColor: this.habit.color,
 							borderRadius: 3

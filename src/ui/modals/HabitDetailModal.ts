@@ -1,6 +1,7 @@
 import { App, Modal } from "obsidian";
 import { HabitStorage } from "../../core/storage";
 import { Habit } from "../../core/types";
+import { t, translations } from "../../i18n";
 import {
 	getStreakInfoForHabit,
 	getOverallScoreForHabit,
@@ -8,7 +9,7 @@ import {
 	buildHeatmapData,
 	WeekdayKey
 } from "../../core/analytics";
-import { todayString, addDays } from "../../core/../utils/dates";
+import { todayString, addDays } from "../../utils/dates";
 
 interface HabitDetailModalOptions {
 	storage: HabitStorage;
@@ -30,6 +31,9 @@ export class HabitDetailModal extends Modal {
 		contentEl.empty();
 		contentEl.addClass("habit-modal");
 		contentEl.addClass("habit-detail-modal");
+
+        const settings = this.storage.getData().settingsSnapshot;
+        const lang = settings.language;
 
 		// Header with habit icon & title
 		const habitHeader = contentEl.createDiv("ht-detail-header");
@@ -66,15 +70,15 @@ export class HabitDetailModal extends Modal {
 			card.createDiv("ht-detail-stat-sub").setText(sub);
 		};
 
-		addStatCard("Score", `${overall.percent}%`, `${overall.ok}/${overall.total} días`, this.habit.color);
-		addStatCard("Racha Actual", `${streak.currentStreak}`, `Máxima: ${streak.bestStreak}`, "#FF6321");
+		addStatCard(t("score", lang), `${overall.percent}%`, `${overall.ok}/${overall.total} ${t("days", lang)}`, this.habit.color);
+		addStatCard(t("current-streak", lang), `${streak.currentStreak}`, `${t("max", lang)}: ${streak.bestStreak}`, "#FF6321");
 		
 		const firstDate = dates[0] || "—";
-		addStatCard("Desde", firstDate, streak.lastDate ? `Último: ${streak.lastDate}` : "Sin fecha", "#6366F1");
+		addStatCard(t("from", lang), firstDate, streak.lastDate ? `${t("last", lang)}: ${streak.lastDate}` : t("no-date", lang), "#6366F1");
 
 		// --- HEATMAP (GitHub Style) ---
 		const heatmapSection = contentEl.createDiv("ht-detail-section");
-		heatmapSection.createDiv("ht-detail-section-title").setText("Actividad — Últimos 12 Meses");
+		heatmapSection.createDiv("ht-detail-section-title").setText(t("activity-heatmap-title", lang));
 		
 		const heatmapContainer = heatmapSection.createDiv("ht-heatmap-container");
 		const heatmapData = buildHeatmapData(this.habit, entries);
@@ -93,41 +97,39 @@ export class HabitDetailModal extends Modal {
 			} else if (status === "NO") {
 				box.addClass("is-no");
 			}
-			box.title = `${d}: ${status || "Sin datos"}`;
+			box.title = `${d}: ${status ? (status === "OK" ? "OK" : "NO") : t("no-data-string", lang)}`;
 		}
 
 		// Leyenda del heatmap
 		const legend = heatmapSection.createDiv("ht-heatmap-legend");
-		legend.createSpan({ cls: "ht-heatmap-legend-label", text: "Menor" });
+		legend.createSpan({ cls: "ht-heatmap-legend-label", text: t("less", lang) });
 		const legendBoxes = legend.createDiv("ht-heatmap-legend-boxes");
 		["rgba(255,255,255,0.05)", `${this.habit.color}30`, `${this.habit.color}60`, `${this.habit.color}90`, this.habit.color].forEach(color => {
 			const b = legendBoxes.createDiv("ht-heatmap-box");
 			b.style.backgroundColor = color;
 		});
-		legend.createSpan({ cls: "ht-heatmap-legend-label", text: "Mayor" });
+		legend.createSpan({ cls: "ht-heatmap-legend-label", text: t("more", lang) });
 
 		// --- Patrón Semanal ---
 		const weekSection = contentEl.createDiv("ht-detail-section");
-		weekSection.createDiv("ht-detail-section-title").setText("Patrón Semanal");
+		weekSection.createDiv("ht-detail-section-title").setText(t("weekly-pattern", lang));
 
 		const weekGrid = weekSection.createDiv("ht-weekly-pattern-grid");
-		const order: WeekdayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-		const labels: Record<WeekdayKey, string> = {
-			Mon: "L", Tue: "M", Wed: "X", Thu: "J", Fri: "V", Sat: "S", Sun: "D"
-		};
+		const order: WeekdayKey[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const shortLabels = (translations[lang === "auto" ? (localStorage.getItem("language") === "es" ? "es" : "en") : lang] as any)["weekday-labels-short"];
 
 		const maxPercent = Math.max(...order.map(k => weekdayStats[k].percent), 1);
 
-		order.forEach(key => {
-			const stats = weekdayStats[key];
+		order.forEach((key, idx) => {
+			const stat = weekdayStats[key];
 			const col = weekGrid.createDiv("ht-weekday-col");
 			
 			const barWrap = col.createDiv("ht-weekday-bar-wrap");
 			const fill = barWrap.createDiv("ht-weekday-bar-fill");
-			fill.style.height = `${(stats.percent / maxPercent) * 100}%`;
+			fill.style.height = `${(stat.percent / maxPercent) * 100}%`;
 			fill.style.backgroundColor = this.habit.color;
 
-			col.createDiv("ht-weekday-label").setText(labels[key]);
+			col.createDiv("ht-weekday-label").setText(shortLabels[idx]);
 		});
 	}
 

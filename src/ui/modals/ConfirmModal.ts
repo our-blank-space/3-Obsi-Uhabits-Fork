@@ -1,4 +1,4 @@
-import { App, Modal, Setting } from "obsidian";
+import { App, Modal } from "obsidian";
 
 export class ConfirmModal extends Modal {
     private onConfirm: () => void;
@@ -6,14 +6,16 @@ export class ConfirmModal extends Modal {
     private message: string;
     private confirmText: string;
     private confirmClass: string;
+    private cancelText: string;
 
-    constructor(app: App, title: string, message: string, onConfirm: () => void, confirmText: string = "Eliminar", confirmClass: string = "mod-warning") {
+    constructor(app: App, title: string, message: string, onConfirm: () => void, confirmText: string = "Confirm", confirmClass: string = "mod-warning", cancelText: string = "Cancel") {
         super(app);
         this.title = title;
         this.message = message;
         this.onConfirm = onConfirm;
         this.confirmText = confirmText;
         this.confirmClass = confirmClass;
+        this.cancelText = cancelText;
     }
 
     onOpen() {
@@ -25,7 +27,7 @@ export class ConfirmModal extends Modal {
 
         const footer = contentEl.createDiv("habit-modal-footer");
         
-        const cancelBtn = footer.createEl("button", { text: "Cancelar", cls: "ht-btn" });
+        const cancelBtn = footer.createEl("button", { text: this.cancelText, cls: "ht-btn" });
         cancelBtn.onclick = () => this.close();
 
         const confirmBtn = footer.createEl("button", { text: this.confirmText, cls: `ht-btn ${this.confirmClass}` });

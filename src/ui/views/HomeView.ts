@@ -4,6 +4,7 @@ import { Habit, HabitEntry, HabitEntries } from "../../core/types";
 import { evalHabitOnDateWithEntries, setEntry, deleteEntry } from "../../core/entries";
 import { sortHabits, reorderHabits, deleteHabit, archiveHabit } from "../../core/habits";
 import { todayString, addDays, weekdayShort, weekdaySpanish, getISOWeek, getISOYear } from "../../utils/dates";
+import { t, getWeekdays } from "../../i18n";
 
 import { CreateHabitModal } from "../modals/CreateHabitModal";
 import { EditHabitModal } from "../modals/EditHabitModal";
@@ -96,6 +97,7 @@ export class HomeView extends ItemView {
 
         const data = this.storage.getData();
         const settings = data.settingsSnapshot;
+        const lang = settings.language;
         const today = todayString();
 
         // Creamos un fragmento para evitar parpadeos masivos
@@ -106,33 +108,33 @@ export class HomeView extends ItemView {
 
         const header = root.createDiv("habit-tracker-header");
         const titleBlock = header.createDiv("ht-header-title-block");
-        titleBlock.createEl("h2", { text: "Habit Loop" });
+        titleBlock.createEl("h2", { text: t("habit-loop", lang) });
 
         const controls = header.createDiv("ht-header-right");
 
-        const dashboardBtn = controls.createEl("button", { cls: "ht-btn", text: "Dashboard" });
+        const dashboardBtn = controls.createEl("button", { cls: "ht-btn", text: t("dashboard", lang) });
         setIcon(dashboardBtn, "bar-chart");
         dashboardBtn.onclick = () => new GlobalDashboardModal(this.app, this.storage).open();
 
-        const archiveBtn = controls.createEl("button", { cls: "ht-btn", text: "Archivados" });
+        const archiveBtn = controls.createEl("button", { cls: "ht-btn", text: t("archived", lang) });
         setIcon(archiveBtn, "archive");
         archiveBtn.onclick = () => new ArchivedHabitsModal(this.app, this.storage, () => this.render()).open();
 
-        const labelSort = settings.sortMode === 'alpha' ? "A-Z" : "Manual";
-        const sortBtn = controls.createEl("button", { cls: "ht-btn", text: `Orden: ${labelSort}` });
+        const labelSort = settings.sortMode === 'alpha' ? t("sort-alpha", lang) : t("sort-manual", lang);
+        const sortBtn = controls.createEl("button", { cls: "ht-btn", text: `${t("order", lang)}: ${labelSort}` });
         sortBtn.onclick = async () => {
             const next = settings.sortMode === "manual" ? "alpha" : "manual";
             await this.storage.update(d => d.settingsSnapshot.sortMode = next);
         };
 
-        const addBtn = controls.createEl("button", { cls: "ht-btn mod-cta", text: "Nuevo" });
+        const addBtn = controls.createEl("button", { cls: "ht-btn mod-cta", text: t("new", lang) });
         addBtn.onclick = () => new CreateHabitModal(this.app, this.storage).open();
 
-        const exportBtn = controls.createEl("button", { cls: "ht-btn", text: "Exportar Mes" });
+        const exportBtn = controls.createEl("button", { cls: "ht-btn", text: t("export-month", lang) });
         setIcon(exportBtn, "table");
         exportBtn.onclick = () => this.generateMonthlyExport();
 
-        const sponsorBtn = controls.createEl("button", { cls: "ht-btn mod-cta-support", text: "Donar" });
+        const sponsorBtn = controls.createEl("button", { cls: "ht-btn", text: t("donate", lang) });
         setIcon(sponsorBtn, "heart");
         sponsorBtn.style.background = "#FF5A5F20";
         sponsorBtn.style.color = "#FF5A5F";
@@ -150,7 +152,7 @@ export class HomeView extends ItemView {
         // Crear Dropdown de Categorías si hay alguna
         if (uniqueCategories.size > 0) {
             const catSelect = controls.createEl("select", { cls: "ht-btn ht-category-select" });
-            catSelect.createEl("option", { value: "all", text: "Todas las categorías" });
+            catSelect.createEl("option", { value: "all", text: t("all-categories", lang) });
             Array.from(uniqueCategories).sort().forEach(cat => {
                 const opt = catSelect.createEl("option", { value: cat, text: cat });
                 if (cat === this.activeCategory) opt.selected = true;
@@ -179,10 +181,6 @@ export class HomeView extends ItemView {
         // --- PROGRESS BAR ---
         if (settings.showDailyProgress) {
             const completedToday = habits.filter(h => {
-                // Para el progreso diario usamos todos los habitos no archivados (aunque esten ocultos por autoHide)
-                // O mejor aun, basarnos en los habitos filtrados si el usuario quiere ver el progreso de lo que queda.
-                // Decidimos usar los habitos visibles (no archivados).
-                const allVisible = data.habits.filter(h => !h.archived);
                 const entries = this.storage.getEntriesSync(h.id);
                 return evalHabitOnDateWithEntries(h, today, entries) === "OK";
             }).length;
@@ -194,7 +192,7 @@ export class HomeView extends ItemView {
             
             const progressBar = progressContainer.createDiv("ht-daily-progress-bar");
             progressBar.createDiv({ cls: "ht-daily-progress-fill", attr: { style: `width: ${percent}%` } });
-            progressContainer.createSpan({ cls: "ht-daily-progress-text", text: `${completedToday}/${allVisibleCount} hoy (${percent}%)` });
+            progressContainer.createSpan({ cls: "ht-daily-progress-text", text: `${completedToday}/${allVisibleCount} ${t("today", lang)} (${percent}%)` });
         }
 
         const dates: string[] = [];
@@ -212,19 +210,20 @@ export class HomeView extends ItemView {
         // Sticky Left Corner
         const leftHeader = tableHeader.createDiv("ht-left-header");
         leftHeader.style.width = `${this.leftColWidth}px`;
-        leftHeader.setText("Hábito");
+        leftHeader.setText(t("habit", lang));
 
         // Resizer (Between Header Corner and Days)
         const resizer = tableHeader.createDiv("ht-resizer");
-        // We reuse setupResizer, but we need to pass a collection of all meta cells
-        // In this new layout, we'll probably just use CSS variables for width
         this.setupUnifiedResizer(resizer, main);
 
         // Days Header (Scrolls Horizontal)
         const dayBar = tableHeader.createDiv("habit-tracker-day-bar");
+        const weekdayNames = getWeekdays(lang);
         dates.forEach(date => {
             const cell = dayBar.createDiv("ht-day-cell");
-            cell.createDiv("ht-day-weekday").setText(weekdayShort(date, settings.firstDayOfWeek));
+            const d = new Date(date + "T00:00:00");
+            const dayIdx = d.getDay();
+            cell.createDiv("ht-day-weekday").setText(weekdayNames[dayIdx]);
             cell.createDiv("ht-day-date").setText(date.slice(5));
             if (date === today) cell.addClass("is-today");
         });
@@ -233,7 +232,7 @@ export class HomeView extends ItemView {
         const tableBody = main.createDiv("ht-table-body");
 
         if (habits.length === 0) {
-            tableBody.createDiv({ cls: "ht-empty", text: "No hay hábitos visibles." });
+            tableBody.createDiv({ cls: "ht-empty", text: t("no-habits", lang) });
         } else {
             habits.forEach(habit => {
                 this.renderUnifiedRow(tableBody, habit, dates, settings.sortMode);
@@ -265,13 +264,12 @@ export class HomeView extends ItemView {
             let newWidth = clientX - containerRect.left;
 
             if (newWidth < 80) newWidth = 80;
-            if (newWidth > containerRect.width * 0.7) newWidth = containerRect.width * 0.7;
+            // Limit width on small screens
+            const maxWidthFactor = window.innerWidth < 600 ? 0.5 : 0.7;
+            if (newWidth > containerRect.width * maxWidthFactor) newWidth = containerRect.width * maxWidthFactor;
 
             this.leftColWidth = newWidth;
             container.style.setProperty("--ht-left-col-width", `${newWidth}px`);
-            
-            // También actualizamos los elementos que tengan el ancho inline si es necesario, 
-            // pero con la variable CSS debería bastar si re-renderizamos o si el CSS la usa.
         };
 
         resizer.addEventListener("mousedown", start);
@@ -281,6 +279,8 @@ export class HomeView extends ItemView {
     // --- RENDER FILAS UNIFICADAS ---
     private renderUnifiedRow(parent: HTMLElement, habit: Habit, dates: string[], sortMode: string) {
         const row = parent.createDiv("ht-row");
+        const settings = this.storage.getData().settingsSnapshot;
+        const lang = settings.language;
         
         // Columna Meta (Sticky Left)
         const meta = row.createDiv("ht-habit-meta");
@@ -293,7 +293,6 @@ export class HomeView extends ItemView {
             setIcon(handle, "grip-vertical");
             handle.style.color = habit.color;
 
-            // 1. DESKTOP DRAG (Standard)
             handle.setAttr("draggable", "true");
             handle.ondragstart = (e) => {
                 this.draggingId = habit.id;
@@ -306,85 +305,54 @@ export class HomeView extends ItemView {
                 meta.removeClass("is-dragging-source");
             };
 
-            // 2. MOBILE TOUCH DRAG (Lógica Geométrica)
             handle.addEventListener("touchstart", (e) => {
-                // Prevenir scroll del navegador
                 if (e.cancelable) e.preventDefault();
-
                 this.draggingId = habit.id;
                 meta.addClass("is-dragging-source");
-
-                // Feedback háptico si es posible (Android)
                 if (navigator.vibrate) navigator.vibrate(20);
-
             }, { passive: false });
 
             handle.addEventListener("touchmove", (e) => {
-                // Prevenir scroll
                 if (e.cancelable) e.preventDefault();
-
                 const touch = e.touches[0];
                 const y = touch.clientY;
-
-                // Buscar qué fila está bajo el dedo (comparando coordenadas)
-                // Usamos querySelectorAll fresco para tener posiciones actualizadas
                 const allRows = Array.from(document.querySelectorAll('.ht-habit-meta'));
-
                 let targetFound: HTMLElement | null = null;
-
                 for (const row of allRows) {
                     const rect = row.getBoundingClientRect();
-                    // Verificar si el dedo está dentro del alto de esta fila
-                    if (y >= rect.top && y <= rect.bottom) {
-                        targetFound = row as HTMLElement;
-                        break;
-                    }
+                    if (y >= rect.top && y <= rect.bottom) { targetFound = row as HTMLElement; break; }
                 }
-
-                // Si encontramos una fila y no es la misma que arrastramos
                 if (targetFound && targetFound.dataset.habitId !== this.draggingId) {
-                    // Limpiar highlight anterior
                     document.querySelectorAll('.is-drop-target').forEach(el => el.removeClass('is-drop-target'));
-
-                    // Marcar nueva
                     targetFound.addClass('is-drop-target');
                     this.dropTargetId = targetFound.dataset.habitId || null;
                 }
-
             }, { passive: false });
 
             handle.addEventListener("touchend", async (e) => {
-                // Limpieza visual
                 meta.removeClass("is-dragging-source");
                 document.querySelectorAll('.is-drop-target').forEach(el => el.removeClass('is-drop-target'));
-
-                // Ejecutar movimiento
                 if (this.draggingId && this.dropTargetId && this.draggingId !== this.dropTargetId) {
                     await reorderHabits(this.storage, this.draggingId, this.dropTargetId);
                 }
-
-                // Reset variables
                 this.draggingId = null;
                 this.dropTargetId = null;
             });
 
-            // Bloquear menú contextual en el handle
             handle.addEventListener("contextmenu", (e) => { e.preventDefault(); e.stopPropagation(); });
             handle.addEventListener("click", (e) => e.stopPropagation());
-
         } else {
             meta.createDiv({ attr: { style: "width: 24px; flex-shrink:0;" } });
         }
 
         const iconDiv = meta.createDiv({ cls: "ht-habit-icon", attr: { style: `background-color: ${habit.color}20; color: transparent;` } });
-        iconDiv.setText(" "); // Placeholder if no icon
+        iconDiv.setText(" "); 
 
         const infoDiv = meta.createDiv({ cls: "ht-habit-info" });
         const nameText = habit.icon ? `${habit.icon} ${habit.name}` : habit.name;
         infoDiv.createSpan({ cls: "ht-habit-name-text", text: nameText });
-        infoDiv.createSpan({ cls: "ht-habit-category", text: habit.category || "Sin categoría" });
+        infoDiv.createSpan({ cls: "ht-habit-category", text: habit.category || (lang === "es" ? "Sin categoría" : "No category") });
 
-        // Drop Target Desktop
         meta.ondragover = (e) => { e.preventDefault(); };
         meta.ondrop = async (e) => {
             e.preventDefault();
@@ -393,7 +361,6 @@ export class HomeView extends ItemView {
             }
         };
 
-        // Click Events
         meta.onclick = (e) => {
             if ((e.target as HTMLElement).closest(".ht-drag-handle")) return;
             new HabitAnalyticsModal(this.app, { storage: this.storage, habit }).open();
@@ -402,29 +369,28 @@ export class HomeView extends ItemView {
         meta.oncontextmenu = (e) => {
             e.preventDefault();
             const menu = new Menu();
-            menu.addItem(i => i.setTitle("Analíticas").setIcon("bar-chart").onClick(() => new HabitAnalyticsModal(this.app, { storage: this.storage, habit }).open()));
-            menu.addItem(i => i.setTitle("Detalles").setIcon("info").onClick(() => new HabitDetailModal(this.app, { storage: this.storage, habit }).open()));
-            menu.addItem(i => i.setTitle("Editar").setIcon("pencil").onClick(() => new EditHabitModal(this.app, this.storage, habit, () => this.render()).open()));
+            menu.addItem(i => i.setTitle(t("analytics", lang)).setIcon("bar-chart").onClick(() => new HabitAnalyticsModal(this.app, { storage: this.storage, habit }).open()));
+            menu.addItem(i => i.setTitle(t("details", lang)).setIcon("info").onClick(() => new HabitDetailModal(this.app, { storage: this.storage, habit }).open()));
+            menu.addItem(i => i.setTitle(t("edit", lang)).setIcon("pencil").onClick(() => new EditHabitModal(this.app, this.storage, habit, () => this.render()).open()));
             menu.addSeparator();
-            menu.addItem(i => i.setTitle("Archivar").setIcon("archive").onClick(async () => {
+            menu.addItem(i => i.setTitle(t("archive", lang)).setIcon("archive").onClick(async () => {
                 const s = this.storage.getData().settingsSnapshot;
                 if (s.confirmArchive) {
-                    new ConfirmModal(this.app, "Archivar Hábito", `¿Deseas archivar "${habit.name}"? Los datos se conservarán pero no aparecerán en la vista principal.`, async () => {
+                    new ConfirmModal(this.app, t("archive", lang), `${t("confirm-archive", lang)} "${habit.name}"?`, async () => {
                         await archiveHabit(this.storage, habit.id);
-                    }, "Archivar", "mod-cta").open();
+                    }, t("archive", lang), "mod-cta").open();
                 } else {
                     await archiveHabit(this.storage, habit.id);
                 }
             }));
-            menu.addItem(i => i.setTitle("Eliminar").setIcon("trash").setWarning(true).onClick(() => {
-                new ConfirmModal(this.app, "Eliminar Hábito", `¿Estás seguro de que deseas eliminar "${habit.name}"? Esta acción no se puede deshacer.`, () => {
+            menu.addItem(i => i.setTitle(t("delete", lang)).setIcon("trash").setWarning(true).onClick(() => {
+                new ConfirmModal(this.app, t("delete", lang), `${t("confirm-delete", lang)}`, () => {
                     deleteHabit(this.storage, habit.id);
                 }).open();
             }));
             menu.showAtMouseEvent(e);
         };
 
-        // Columna Celdas (Scroll Horizontal)
         const cellsContainer = row.createDiv("ht-habit-cells-container");
         const entriesData = this.storage.getEntriesSync(habit.id);
 
@@ -449,12 +415,9 @@ export class HomeView extends ItemView {
                     noteIcon.onclick = (e) => { e.stopPropagation(); this.app.workspace.getLeaf(true).openFile(file); };
                 }
             }
-            // --- Long Press + Quick Tap ---
             this.addLongPressHandlers(
                 cell,
-                // Quick tap: toggle
                 () => this.handleCellClick(habit, date, entry),
-                // Long press: open full EntryModal
                 () => this.openEntryModal(habit, date, entry)
             );
         });
@@ -464,27 +427,13 @@ export class HomeView extends ItemView {
         if (habit.type === "yesno") {
             const currentValue = entry?.value;
             const nextValue = currentValue === "✔" ? "NONE" : "✔";
-            
-            if (nextValue === "NONE") {
-                await deleteEntry(this.storage, habit.id, date);
-            } else {
-                await setEntry(this.storage, habit.id, date, "✔");
-            }
-            // La vista se refresca automáticamente por los eventos del storage
+            if (nextValue === "NONE") { await deleteEntry(this.storage, habit.id, date); } 
+            else { await setEntry(this.storage, habit.id, date, "✔"); }
             return;
         }
-        
-        new EntryModal(this.app, { 
-            storage: this.storage, 
-            habit, 
-            date, 
-            entry, 
-            onSave: async () => { }, 
-            onDelete: async () => { } 
-        }).open();
+        this.openEntryModal(habit, date, entry);
     }
 
-    // Siempre abre el modal completo (llamado desde long-press)
     private openEntryModal(habit: Habit, date: string, entry?: HabitEntry) {
         new EntryModal(this.app, {
             storage: this.storage,
@@ -496,13 +445,7 @@ export class HomeView extends ItemView {
         }).open();
     }
 
-    // Long-press handler: tap rápido (<400ms) invoca onTap, pulsación larga invoca onLongPress
-    private addLongPressHandlers(
-        el: HTMLElement,
-        onTap: () => void,
-        onLongPress: () => void,
-        duration = 400
-    ) {
+    private addLongPressHandlers(el: HTMLElement, onTap: () => void, onLongPress: () => void, duration = 400) {
         let timer: ReturnType<typeof setTimeout> | null = null;
         let startX = 0, startY = 0;
         let fired = false;
@@ -512,7 +455,6 @@ export class HomeView extends ItemView {
             startX = x; startY = y;
             timer = setTimeout(() => {
                 fired = true;
-                // Feedback háptico en mobile
                 if (navigator.vibrate) navigator.vibrate(30);
                 el.addClass("ht-cell-long-press");
                 onLongPress();
@@ -521,42 +463,41 @@ export class HomeView extends ItemView {
         };
 
         const cancel = (x: number, y: number) => {
-            // Si el dedo/cursor se movió mucho, cancelamos
-            if (Math.abs(x - startX) > 8 || Math.abs(y - startY) > 8) {
+            const threshold = 20; 
+            if (Math.abs(x - startX) > threshold || Math.abs(y - startY) > threshold) {
                 if (timer) clearTimeout(timer);
-                fired = true; // evita que el click dispare el tap
+                fired = true; 
             }
             if (timer) { clearTimeout(timer); timer = null; }
         };
 
-        // Desktop
         el.addEventListener("mousedown", (e) => start(e.clientX, e.clientY));
         el.addEventListener("mousemove", (e) => cancel(e.clientX, e.clientY));
         el.addEventListener("mouseup", () => { if (timer) { clearTimeout(timer); timer = null; } });
-        el.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (!fired) onTap();
-        });
+        el.addEventListener("click", (e) => { e.stopPropagation(); if (!fired) onTap(); });
 
-        // Mobile Touch
         el.addEventListener("touchstart", (e) => {
-            if (e.cancelable) e.preventDefault();
             const t = e.touches[0];
             start(t.clientX, t.clientY);
-        }, { passive: false });
+        }, { passive: true });
         el.addEventListener("touchmove", (e) => {
             const t = e.touches[0];
             cancel(t.clientX, t.clientY);
         });
         el.addEventListener("touchend", (e) => {
             if (timer) { clearTimeout(timer); timer = null; }
-            if (!fired) { e.preventDefault(); onTap(); }
+            if (!fired) { 
+                if (e.cancelable) e.preventDefault(); 
+                onTap(); 
+            }
         });
         el.addEventListener("contextmenu", (e) => e.preventDefault());
     }
 
     private async generateMonthlyExport() {
         const today = todayString();
+        const settings = this.storage.getData().settingsSnapshot;
+        const lang = settings.language;
         const [year, month] = today.split("-");
         const daysInMonth = new Date(Number(year), Number(month), 0).getDate();
 
@@ -568,20 +509,19 @@ export class HomeView extends ItemView {
 
         const data = this.storage.getData();
         const habits = data.habits.filter(h => !h.archived);
-        const settings = data.settingsSnapshot;
         const folder = (settings.notesFolder || "Habit Logs").trim();
 
         await this.preLoadVisibleData();
 
-        // Cabecera Markdown
         const mdHeader = [
-            "| Fecha / Día | Hábito (Cualitativo/Binario) | Valor (Cuantitativo) | Estado de Ánimo | Observaciones |",
+            `| ${t("habit", lang)} | 0..1 | Value | Mood | Obs |`,
             "|---|---|---|---|---|"
         ];
         const mdRows: string[] = [];
 
         monthDays.forEach(dateStr => {
-            const dayLabel = weekdaySpanish(dateStr).slice(0, 3);
+            const dayIdx = new Date(dateStr + "T00:00:00").getDay();
+            const dayLabel = getWeekdays(lang)[dayIdx];
             const dateWithDay = `${dateStr} (${dayLabel})`;
 
             habits.forEach(habit => {
@@ -618,8 +558,6 @@ export class HomeView extends ItemView {
             ""
         ].join("\n");
 
-        // Calcular estadísticas
-        const totalRegistros = mdRows.length;
         const habitStats = habits.map(h => {
             const entriesData = this.storage.getEntriesSync(h.id);
             const count = monthDays.filter(d => {
@@ -631,10 +569,8 @@ export class HomeView extends ItemView {
         }).join("\n");
 
         const summary = [
-            "## Resumen Mensual",
-            `Total de entradas registradas: ${totalRegistros}`,
+            `## ${t("export-month", lang)}`,
             "",
-            "### Cumplimiento por Hábito",
             habitStats,
             "",
             "---",
@@ -643,29 +579,22 @@ export class HomeView extends ItemView {
 
         const tableContent = mdRows.length > 0
             ? [...mdHeader, ...mdRows].join("\n")
-            : mdHeader.join("\n") + "\n_(Sin registros este mes)_";
+            : mdHeader.join("\n") + "\n_(Sin registros)_";
 
         const content = frontmatter + summary + tableContent;
         const filename = `Log_Habitos_${year}-${month}.md`;
         const filePath = folder + "/" + filename;
 
         try {
-            if (!this.app.vault.getAbstractFileByPath(folder)) {
-                await this.app.vault.createFolder(folder);
-            }
+            if (!this.app.vault.getAbstractFileByPath(folder)) { await this.app.vault.createFolder(folder); }
             const existing = this.app.vault.getAbstractFileByPath(filePath);
             let file: TFile;
-            if (existing instanceof TFile) {
-                await this.app.vault.modify(existing, content);
-                file = existing;
-            } else {
-                file = await this.app.vault.create(filePath, content);
-            }
-            new Notice(`✅ ${filename} exportado`);
+            if (existing instanceof TFile) { await this.app.vault.modify(existing, content); file = existing; } 
+            else { file = await this.app.vault.create(filePath, content); }
+            new Notice(`${t("export-success", lang)}: ${filename}`);
             await this.app.workspace.getLeaf(true).openFile(file);
         } catch (e) {
-            console.error(e);
-            new Notice("❌ Error al exportar el log mensual.");
+            new Notice(t("export-error", lang));
         }
     }
 }

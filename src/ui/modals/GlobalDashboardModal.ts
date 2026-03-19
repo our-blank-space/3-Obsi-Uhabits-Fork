@@ -4,6 +4,7 @@ import { todayString, addDays, getRangeBounds, compareDateStr } from "../../util
 import { evalHabitOnDateWithEntries } from "../../core/entries";
 import { getStreakInfoForHabit } from "../../core/analytics";
 import { Habit } from "../../core/types";
+import { t } from "../../i18n";
 
 export class GlobalDashboardModal extends Modal {
 	private storage: HabitStorage;
@@ -18,13 +19,16 @@ export class GlobalDashboardModal extends Modal {
 		contentEl.empty();
 		contentEl.addClass("habit-modal");
 
-		contentEl.createEl("h2", { text: "Dashboard Global" });
+        const settings = this.storage.getData().settingsSnapshot;
+        const lang = settings.language;
+
+		contentEl.createEl("h2", { text: t("global-dashboard", lang) });
 
 		const data = this.storage.getData();
 		const activeHabits = data.habits.filter(h => !h.archived);
 
 		if (activeHabits.length === 0) {
-			contentEl.createDiv({ cls: "ht-empty", text: "No tienes hábitos activos aún." });
+			contentEl.createDiv({ cls: "ht-empty", text: t("no-active-habits", lang) });
 			return;
 		}
 
@@ -75,10 +79,10 @@ export class GlobalDashboardModal extends Modal {
 		ringCard.appendChild(svg);
 		const ringInfo = ringCard.createDiv("ht-ring-info");
 		ringInfo.createDiv("ht-ring-percent").setText(`${todayPercent}%`);
-		ringInfo.createDiv("ht-ring-label").setText("Completado Hoy");
+		ringInfo.createDiv("ht-ring-label").setText(t("completed-today", lang));
 		
 		const ringSubtext = ringCard.createDiv("ht-ring-subtext");
-		ringSubtext.setText(`${okToday} de ${activeHabits.length} hábitos completados`);
+		ringSubtext.setText(`${okToday} / ${activeHabits.length} ${t("habits-completed-summary", lang)}`);
 
 		// --- 2. Stats Cards Row ---
 		const statsRow = contentEl.createDiv("ht-dashboard-stats-row");
@@ -98,14 +102,14 @@ export class GlobalDashboardModal extends Modal {
 			return card;
 		};
 
-		createStatCard("🔥", String(topStreak), "Mejor Racha", "#FF6321");
-		createStatCard("📊", String(avgStreak), "Racha Promedio", "#6366F1");
-		createStatCard("⚡", String(activeHabits.length), "Hábitos Activos", "#10B981");
+		createStatCard("🔥", String(topStreak), t("best-streak", lang), "#FF6321");
+		createStatCard("📊", String(avgStreak), t("avg-streak-label", lang), "#6366F1");
+		createStatCard("⚡", String(activeHabits.length), t("active-habits-count", lang), "#10B981");
 
 		// --- 3. Top 5 Rachas ---
 		const streakSection = contentEl.createDiv("ht-dashboard-section");
 		const streakTitle = streakSection.createDiv("ht-dashboard-section-title");
-		streakTitle.setText("🏆 Top Rachas Activas");
+		streakTitle.setText(`🏆 ${t("top-active-streaks", lang)}`);
 
 		const topStreaks = [...entriesMap]
 			.filter(r => r.streak > 0)
@@ -126,12 +130,12 @@ export class GlobalDashboardModal extends Modal {
 				streakBadge.style.borderColor = `${item.habit.color}40`;
 			});
 		} else {
-			streakSection.createDiv({ text: "Aún no hay rachas. ¡Empieza hoy!", cls: "ht-empty" });
+			streakSection.createDiv({ text: t("no-streaks-yet", lang), cls: "ht-empty" });
 		}
 
 		// --- 4. Consistencia Semanal ---
 		const weekSection = contentEl.createDiv("ht-dashboard-section");
-		weekSection.createDiv("ht-dashboard-section-title").setText("📅 Últimos 7 Días");
+		weekSection.createDiv("ht-dashboard-section-title").setText(`📅 ${t("last-7-days", lang)}`);
 		
 		const { from, to } = getRangeBounds("week");
 		let totalOkWeek = 0;
@@ -158,7 +162,7 @@ export class GlobalDashboardModal extends Modal {
 		
 		const weekMeta = weekCard.createDiv("ht-week-meta");
 		weekMeta.createSpan({ cls: "ht-week-percent", text: `${weekPercent}%` });
-		weekMeta.createSpan({ cls: "ht-week-label", text: `${totalOkWeek} hits de ${totalPossible} posibles` });
+		weekMeta.createSpan({ cls: "ht-week-label", text: `${totalOkWeek} / ${totalPossible} ${t("consistency-summary", lang)}` });
 	}
 
 	onClose() {

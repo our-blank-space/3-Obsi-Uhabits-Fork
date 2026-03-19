@@ -1,8 +1,9 @@
-import { App, Modal, Setting, TextComponent, SliderComponent, TextAreaComponent } from "obsidian";
+import { App, Modal, Setting, TextComponent, SliderComponent, TextAreaComponent, Notice } from "obsidian";
 import { HabitStorage } from "../../core/storage";
 import { Habit, HabitEntry } from "../../core/types";
 import { setEntry, deleteEntry, evalHabitEntry } from "../../core/entries";
 import { createHabitNote, NoteSettings } from "../../utils/notes";
+import { t } from "../../i18n";
 
 interface EntryModalOptions {
 	storage: HabitStorage;
@@ -29,6 +30,7 @@ export class EntryModal extends Modal {
 	private energyValue: number = 3;
 	private moodValue: string = "";
 	private showContext: boolean = false;
+    private lang: any;
 
 	constructor(app: App, opts: EntryModalOptions) {
 		super(app);
@@ -61,10 +63,14 @@ export class EntryModal extends Modal {
 		contentEl.empty();
 		contentEl.addClass("habit-entry-modal");
 
+        const settings = this.storage.getData().settingsSnapshot;
+        this.lang = settings.language;
+        const lang = this.lang;
+
 		contentEl.createEl("h2", { text: this.habit.name });
 		
 		const subHeader = contentEl.createDiv("ht-modal-subheader");
-		subHeader.createSpan({ cls: "ht-entry-date-label", text: "Registro para: " });
+		subHeader.createSpan({ cls: "ht-entry-date-label", text: t("entry-for", lang) });
 		subHeader.createSpan({ cls: "ht-entry-date", text: this.date });
 
 		// Feedback visual
@@ -86,18 +92,19 @@ export class EntryModal extends Modal {
 			btnNo.onclick = () => { this.yesNoValue = "✖"; update(); };
 			update();
 		} else {
-			new Setting(contentEl).setName("Valor")
-				.setDesc(this.habit.goal ? `Meta: ${this.habit.goal.value}` : "")
-				.addText((t: TextComponent) => {
-					t.inputEl.type = "number";
-					t.setValue(String(this.quantValue))
+			new Setting(contentEl).setName(t("value", lang))
+				.setDesc(this.habit.goal ? `${t("goal", lang)}: ${this.habit.goal.value}` : "")
+				.addText((text: TextComponent) => {
+					text.inputEl.type = "number";
+					text.setValue(String(this.quantValue))
 						.onChange((v: string) => this.quantValue = Number(v));
+                    text.inputEl.focus();
 				});
 		}
 
 		// --- Contexto (Opcional/Colapsable) ---
 		const contextToggle = contentEl.createEl("button", { 
-			text: this.showContext ? "Ocultar Detalles" : "Añadir Detalles (Ánimo/Energía)", 
+			text: this.showContext ? t("entry-hide-details", lang) : t("entry-show-details", lang), 
 			cls: "ht-btn ht-context-toggle" 
 		});
 		
@@ -107,13 +114,13 @@ export class EntryModal extends Modal {
 		contextToggle.onclick = () => {
 			this.showContext = !this.showContext;
 			contextArea.style.display = this.showContext ? "block" : "none";
-			contextToggle.setText(this.showContext ? "Ocultar Detalles" : "Añadir Detalles (Ánimo/Energía)");
+			contextToggle.setText(this.showContext ? t("entry-hide-details", lang) : t("entry-show-details", lang));
 		};
 
 		const energyContainer = contextArea.createDiv("ht-context-row");
 		new Setting(energyContainer)
-			.setName("Nivel de Energía (1: Baja 🔋 → 5: Alta ⚡)")
-			.addSlider((s: SliderComponent) => s
+			.setName(t("entry-energy-desc", lang))
+			.addSlider((slider: SliderComponent) => slider
 				.setLimits(1, 5, 1)
 				.setValue(this.energyValue)
 				.setDynamicTooltip()
@@ -133,18 +140,26 @@ export class EntryModal extends Modal {
 		});
 
 		// --- Observaciones ---
-		new Setting(contextArea).setName("Observación")
-			.addTextArea((t: TextAreaComponent) => {
-				t.setPlaceholder("Opcional...")
+		new Setting(contextArea).setName(t("entry-notes", lang))
+			.addTextArea((text: TextAreaComponent) => {
+				text.setPlaceholder(t("entry-placeholder", lang))
 					.setValue(this.notes)
 					.onChange((v: string) => this.notes = v);
+                
+                // Shortcut local para el textarea
+                text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        this.submit();
+                    }
+                });
 			});
 
 		// --- Footer ---
 		const footer = contentEl.createDiv("habit-modal-footer");
 
 		if (this.entry) {
-			const btnDel = footer.createEl("button", { text: "Borrar Entrada", cls: "mod-warning" });
+			const btnDel = footer.createEl("button", { text: t("entry-delete", lang), cls: "mod-warning" });
 			btnDel.onclick = async () => {
 				await deleteEntry(this.storage, this.habit.id, this.date);
 				this.onDelete();
@@ -152,33 +167,47 @@ export class EntryModal extends Modal {
 			};
 		}
 
-		const btnSave = footer.createEl("button", { text: "Guardar", cls: "mod-cta" });
-		btnSave.onclick = async () => {
-			const val = this.habit.type === "yesno" ? this.yesNoValue : this.quantValue;
-			const s = this.storage.getData().settingsSnapshot;
+		const btnSave = footer.createEl("button", { text: t("save", lang), cls: "mod-cta" });
+		btnSave.onclick = () => this.submit();
 
-			// Mapeo de settings
-			const noteSettings: NoteSettings = {
-				folder: s.notesFolder || "Habit Logs",
-				filenamePattern: s.noteFilenamePattern,
-				template: s.noteTemplate,
-				openAfterCreate: s.openNoteAfterCreate,
-				askBeforeCreate: s.askBeforeCreateNote
-			};
+        // Keyboard Shortcut general (si no está en el textarea)
+        const kbHandler = (e: KeyboardEvent) => {
+            if (e.key === "Enter" && !(e.target instanceof HTMLTextAreaElement)) {
+                e.preventDefault();
+                this.submit();
+            }
+        };
+        contentEl.addEventListener("keydown", kbHandler);
 
-			// Actualizar/Crear Log Mensual
-			const notePath = await createHabitNote(this.app, noteSettings, this.habit, this.date, String(val), this.notes, this.moodValue);
-
-			await setEntry(this.storage, this.habit.id, this.date, val, notePath, {
-				energy: this.energyValue,
-				mood: this.moodValue,
-				notes: this.notes.trim() || undefined
-			});
-
-			this.onSave({ value: val, notePath });
-			this.close();
-		};
+        this.onClose = () => {
+            contentEl.removeEventListener("keydown", kbHandler);
+            contentEl.empty();
+        };
 	}
 
-	onClose() { this.contentEl.empty(); }
+    private async submit() {
+        const val = this.habit.type === "yesno" ? this.yesNoValue : this.quantValue;
+        const s = this.storage.getData().settingsSnapshot;
+
+        // Mapeo de settings
+        const noteSettings: NoteSettings = {
+            folder: s.notesFolder || "Habit Logs",
+            filenamePattern: s.noteFilenamePattern,
+            template: s.noteTemplate,
+            openAfterCreate: s.openNoteAfterCreate,
+            askBeforeCreate: s.askBeforeCreateNote
+        };
+
+        // Actualizar/Crear Log Mensual
+        const notePath = await createHabitNote(this.app, noteSettings, this.habit, this.date, String(val), this.notes, this.moodValue);
+
+        await setEntry(this.storage, this.habit.id, this.date, val, notePath, {
+            energy: this.energyValue,
+            mood: this.moodValue,
+            notes: this.notes.trim() || undefined
+        });
+
+        this.onSave({ value: val, notePath });
+        this.close();
+    }
 }

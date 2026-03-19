@@ -1,6 +1,7 @@
 import { App, Modal, Notice } from "obsidian";
 import { HabitStorage } from "../../core/storage";
 import { restoreHabit, deleteHabit } from "../../core/habits";
+import { t } from "../../i18n";
 
 export class ArchivedHabitsModal extends Modal {
     storage: HabitStorage;
@@ -16,12 +17,16 @@ export class ArchivedHabitsModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         contentEl.addClass("habit-modal");
-        contentEl.createEl("h2", { text: "Hábitos Archivados" });
+
+        const settings = this.storage.getData().settingsSnapshot;
+        const lang = settings.language;
+
+        contentEl.createEl("h2", { text: t("archived-habits", lang) });
 
         const archived = this.storage.getData().habits.filter(h => h.archived);
 
         if (archived.length === 0) {
-            contentEl.createDiv({ text: "No hay hábitos archivados.", cls: "ht-empty" });
+            contentEl.createDiv({ text: t("no-archived-habits", lang), cls: "ht-empty" });
             return;
         }
 
@@ -29,7 +34,6 @@ export class ArchivedHabitsModal extends Modal {
 
         archived.forEach(habit => {
             const item = list.createDiv("ht-archived-item");
-            // Asignación de estilos directa al elemento HTML es válida
             item.style.display = "flex";
             item.style.justifyContent = "space-between";
             item.style.alignItems = "center";
@@ -37,31 +41,29 @@ export class ArchivedHabitsModal extends Modal {
             item.style.borderBottom = "1px solid var(--background-modifier-border)";
 
             const info = item.createDiv();
-            // CORRECCIÓN: Usar 'attr' para styles dentro de createDiv
             info.createDiv({ 
                 text: habit.name, 
                 attr: { style: "font-weight:bold" } 
             });
             
-            // CORRECCIÓN: Usar 'attr' para styles dentro de createDiv
             const actions = item.createDiv({ 
                 cls: "ht-archived-actions", 
                 attr: { style: "display:flex; gap:8px;" }
             });
 
             // Botón Restaurar
-            const btnRestore = actions.createEl("button", { text: "Restaurar" });
+            const btnRestore = actions.createEl("button", { text: t("restore", lang) });
             btnRestore.onclick = async () => {
                 await restoreHabit(this.storage, habit.id);
-                new Notice(`Hábito "${habit.name}" restaurado.`);
-                this.onRestore(); // Refrescar vista principal
-                this.onOpen(); // Refrescar modal
+                new Notice(`${t("habit-restored", lang)}: "${habit.name}"`);
+                this.onRestore();
+                this.onOpen();
             };
 
             // Botón Eliminar Definitivamente
-            const btnDel = actions.createEl("button", { text: "Eliminar", cls: "mod-warning" });
+            const btnDel = actions.createEl("button", { text: t("delete", lang), cls: "mod-warning" });
             btnDel.onclick = async () => {
-                if(confirm("¿Eliminar permanentemente? Se perderán los datos.")) {
+                if(confirm(t("confirm-delete-permanent", lang))) {
                     await deleteHabit(this.storage, habit.id);
                     this.onOpen();
                 }

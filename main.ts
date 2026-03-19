@@ -2,8 +2,10 @@ import { Plugin, WorkspaceLeaf } from "obsidian";
 import { HabitStorage } from "./src/core/storage";
 import { HomeView, HABIT_VIEW_TYPE } from "./src/ui/views/HomeView";
 import { HabitSettingsTab } from "./src/ui/settings";
+import { CreateHabitModal } from "./src/ui/modals/CreateHabitModal";
 import { exportJsonBackup } from "./src/utils/backup";
 import { todayString, addDays, compareDateStr } from "./src/utils/dates";
+import { t } from "./src/i18n";
 
 export default class HabitTrackerPlugin extends Plugin {
 	storage!: HabitStorage;
@@ -32,8 +34,16 @@ export default class HabitTrackerPlugin extends Plugin {
 		// 4. Comandos
 		this.addCommand({
 			id: "open-habit-tracker",
-			name: "Abrir Habit Tracker",
+			name: t("dashboard"), // "Abrir Habit Tracker"
 			callback: () => this.activateView()
+		});
+
+		this.addCommand({
+			id: "create-new-habit",
+			name: t("create-habit"), // "Crear Nuevo Hábito"
+			callback: () => {
+				new CreateHabitModal(this.app, this.storage).open();
+			}
 		});
 
 		// 5. Configuración

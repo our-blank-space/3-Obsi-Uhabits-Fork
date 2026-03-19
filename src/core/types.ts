@@ -70,6 +70,7 @@ export interface HabitPluginSettings {
     daysVisible: number;
     showDailyProgress: boolean;
     confirmArchive: boolean;
+    language: "auto" | "en" | "es";
 }
 
 export interface HabitData {

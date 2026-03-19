@@ -1547,3 +1547,91 @@
     border-radius: 4px;
     transition: width 0.8s ease;
 }
+/* =====================================================================
+   RESPONSIVE DESIGN & MOBILE FIXES
+   ===================================================================== */
+
+@media screen and (max-width: 768px) {
+    .habit-tracker-root {
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .habit-tracker-root .habit-tracker-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .habit-tracker-root .habit-tracker-header h2 {
+        font-size: 1.75rem;
+    }
+
+    .habit-tracker-root .ht-header-right {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .habit-tracker-root .ht-btn {
+        padding: 8px 12px;
+        font-size: 0.75rem;
+        flex: 1 1 auto;
+        min-width: fit-content;
+    }
+
+    .ht-daily-progress-bar {
+        width: 100%;
+        max-width: 250px;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .habit-tracker-root {
+        --ht-left-col-width: 130px !important;
+    }
+
+    .habit-tracker-root .ht-main {
+        border-radius: 16px;
+    }
+
+    .habit-tracker-root .ht-day-cell,
+    .habit-tracker-root .ht-habit-cell {
+        width: 50px;
+        min-width: 50px;
+        padding: 4px;
+    }
+
+    .habit-tracker-root .ht-cell-content {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+    }
+
+    .habit-tracker-root .ht-left-header,
+    .habit-tracker-root .ht-habit-meta {
+        padding: 0 12px;
+    }
+
+    .habit-tracker-root .ht-habit-name-text {
+        font-size: 0.8rem;
+    }
+
+    .habit-tracker-root .ht-habit-category {
+        font-size: 0.55rem;
+    }
+
+    /* Hide text on some buttons to save space if needed, 
+       but for now we let them wrap. */
+}
+
+@media screen and (max-width: 600px) {
+    .habit-tracker-root .habit-tracker-day-bar,
+    .habit-tracker-root .ht-habit-cells-container {
+        padding-right: 10px; /* Reduced from 40px */
+    }
+    
+    .habit-tracker-root .ht-main {
+        margin: 0 -8px; /* Slightly expand to use more horizontal space */
+    }
+}
