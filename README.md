@@ -58,6 +58,4 @@ Sin embargo, **si necesitas un proyecto específico y personalizado en Obsidian*
 
 *Desarrollado con ❤️ para la comunidad de Obsidian.*
 
----
 
-*Desarrollado con ❤️ para la comunidad de Obsidian.*
