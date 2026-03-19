@@ -16,7 +16,11 @@
 > **Explora el Plugin**: Mira el video de demostración para ver el flujo completo de registro y analíticas.
 
 <div align="center">
-  <iframe src="https://drive.google.com/file/d/1wKzNOzOdADoz1xTiRS3dN-OGZzcXeFof/preview" width="100%" height="450" allow="autoplay"></iframe>
+  <a href="https://github.com/our-blank-space/3-Obsi-Uhabits-Fork/blob/main/Resources/demo1.mp4?raw=true">
+    <img src="Resources/grid_view.png" width="100%" alt="Haz clic para ver el video">
+    <br>
+    <b>▶️ Haz clic aquí para ver el video de demostración</b>
+  </a>
 </div>
 
 
