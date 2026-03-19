@@ -19,7 +19,6 @@ export async function generateMonthlyReport(app: App, storage: HabitStorage): Pr
 	const endOfMonth = `${label}-${String(lastDay.getDate()).padStart(2, "0")}`;
 
 	for (const h of d.habits) {
-		// Load entries asynchronously per habit
 		const entriesData = await storage.getEntries(h.id);
 
 		let ok = 0, total = 0;
@@ -31,8 +30,35 @@ export async function generateMonthlyReport(app: App, storage: HabitStorage): Pr
 				if (ev === "OK") ok++;
 			}
 		}
+		
 		const percent = total > 0 ? Math.round((ok / total) * 100) : 0;
-		content += `## ${h.name}\n- Score: ${ok}/${total} (${percent}%)\n\n`;
+		content += `## ${h.name}\n- **Cumplimiento**: ${ok}/${total} (${percent}%)\n`;
+		
+		// Calcular información adicional para el reporte mensual
+		let totalEnergy = 0;
+		let energyCount = 0;
+		const moodCounts: Record<string, number> = {};
+		
+		for (const date in entriesData.entries) {
+			if (compareDateStr(date, startOfMonth) >= 0 && compareDateStr(date, endOfMonth) <= 0) {
+				const e = entriesData.entries[date];
+				if (e.energy) {
+					totalEnergy += e.energy;
+					energyCount++;
+				}
+				if (e.mood) {
+					moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1;
+				}
+			}
+		}
+		
+		const avgEnergy = energyCount > 0 ? (totalEnergy / energyCount).toFixed(1) : "N/A";
+		const topMood = Object.keys(moodCounts).length > 0 
+		    ? Object.keys(moodCounts).reduce((a, b) => moodCounts[a] > moodCounts[b] ? a : b)
+			: "N/A";
+
+		content += `- **Energía Promedio**: ${avgEnergy}\n`;
+		content += `- **Ánimo Frecuente**: ${topMood}\n\n`;
 	}
 
 	const existing = app.vault.getAbstractFileByPath(path);

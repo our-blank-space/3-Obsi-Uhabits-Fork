@@ -10,6 +10,7 @@ export interface CreateHabitOptions {
 	type: HabitType;
 	color?: string;
 	icon?: string;
+	category?: string;
 	frequency: HabitFrequency;
 	goal?: HabitGoal;
 }
@@ -22,6 +23,7 @@ export async function createHabit(storage: HabitStorage, opts: CreateHabitOption
 		type: opts.type,
 		color: opts.color ?? "#FF8888",
 		icon: opts.icon,
+		category: opts.category,
 		frequency: opts.frequency,
 		goal: opts.goal,
 		archived: false,
@@ -54,6 +56,14 @@ export async function restoreHabit(storage: HabitStorage, id: string) {
 }
 
 export async function deleteHabit(storage: HabitStorage, id: string) {
+	// 1. Eliminar datos físicos
+	// @ts-ignore - Acceso privado para limpieza coordinada
+	if (storage.modular) {
+		// @ts-ignore
+		await storage.modular.deleteHabitData(id);
+	}
+	
+	// 2. Eliminar de la lista maestra
 	await storage.update((d) => {
 		d.habits = d.habits.filter((h) => h.id !== id);
 	});

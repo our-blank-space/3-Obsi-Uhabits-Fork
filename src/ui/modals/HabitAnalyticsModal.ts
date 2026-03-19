@@ -45,6 +45,7 @@ export class HabitAnalyticsModal extends Modal {
 
 		// --- HEADER ---
 		const header = contentEl.createDiv("ham-header");
+		// Mantenemos solo el color dinámico del hábito
 		header.style.borderBottom = `2px solid ${this.habit.color}`;
 
 		const titleRow = header.createDiv("ham-title-row");
@@ -82,19 +83,13 @@ export class HabitAnalyticsModal extends Modal {
 
 		days.forEach(d => {
 			const row = table.createEl("tr");
-			row.createEl("td", { text: d }).style.width = "40px";
+			row.createEl("td", { text: d });
 			const barCell = row.createEl("td");
-			const bg = barCell.createDiv();
-			bg.style.background = "var(--background-modifier-border)";
-			bg.style.height = "6px";
-			bg.style.width = "100%";
-			bg.style.borderRadius = "3px";
-
-			const fill = bg.createDiv();
+			const bg = barCell.createDiv("ham-progress-bg");
+			
+			const fill = bg.createDiv("ham-progress-fill");
 			fill.style.background = this.habit.color;
-			fill.style.height = "100%";
 			fill.style.width = `${stats[d].percent}%`;
-			fill.style.borderRadius = "3px";
 
 			row.createEl("td", { text: `${stats[d].percent}%` }).style.textAlign = "right";
 		});

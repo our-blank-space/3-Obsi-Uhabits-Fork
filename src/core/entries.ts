@@ -1,6 +1,6 @@
 import { HabitStorage } from "./storage";
 import { Habit, HabitEntry, HabitEval, HabitEntries } from "./types";
-import { todayString } from "../utils/dates";
+import { todayString, toDateOnly } from "../utils/dates";
 
 /* ============================================
    Evaluación de entradas (sin cambios)
@@ -15,9 +15,13 @@ export function evalHabitEntry(habit: Habit, entry?: HabitEntry): HabitEval {
         return "NONE";
     } else {
         if (typeof entry.value !== "number") return "NONE";
-        if (!habit.goal) return "NONE";
-        const v = entry.value;
+        
+        // Si no hay meta, evaluamos por presencia de valor > 0
+        if (!habit.goal) {
+            return entry.value > 0 ? "OK" : "NO";
+        }
 
+        const v = entry.value;
         switch (habit.goal.type) {
             case "atLeast": return v >= habit.goal.value ? "OK" : "NO";
             case "atMost": return v <= habit.goal.value ? "OK" : "NO";
@@ -36,9 +40,27 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
     const basic = evalHabitEntry(habit, entry);
     if (basic !== "NONE") return basic;
 
-    if (habit.type === "yesno") {
-        const today = todayString(); // 🔥 FIX: Usar helper local, no UTC
-        if (date < today) return "NO";
+    const today = todayString();
+    
+    // Si la fecha es futura, no evaluamos aún
+    if (date > today) return "NONE";
+
+    const created = habit.createdAt ? habit.createdAt.slice(0, 10) : "";
+    
+    // Si la fecha es anterior a la creación, no cuenta
+    if (created && date < created) return "NONE";
+
+    // --- LÓGICA DE FRECUENCIA ---
+    const freqMode = habit.frequency?.mode || "daily";
+
+    if (freqMode === "weekdays") {
+        const dObj = toDateOnly(date);
+        const day = dObj.getDay(); // 0=Sun, 6=Sat
+        if (day === 0 || day === 6) return "NONE"; // No cuenta los findes
+    }
+
+    if (date < today) {
+        return "NO";
     }
 
     return basic;

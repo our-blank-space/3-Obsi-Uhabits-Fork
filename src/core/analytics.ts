@@ -101,10 +101,15 @@ export function buildHeatmapData(habit: Habit, entries: HabitEntries): HeatmapDa
     const map: HeatmapData = {};
     const today = todayString();
     const dates = Object.keys(entries.entries).sort();
-    const start = dates.length > 0 ? dates[0] : today;
+    
+    // Si no hay fechas, creamos un mapa vacío
+    if (dates.length === 0) return map;
 
+    const start = dates[0];
+    
     for (let d = start; compareDateStr(d, today) <= 0; d = addDays(d, 1)) {
         const ev = evalHabitOnDateWithEntries(habit, d, entries);
+        // Omitimos los puramente NONE donde no hubo interacción ni requiere, para ahorrar espacio
         if (ev !== "NONE") map[d] = ev;
     }
     return map;
@@ -179,11 +184,17 @@ export async function getStreakInfoForHabit(storage: HabitStorage, habitId: stri
 
     let cursor = dates[0];
     while (compareDateStr(cursor, today) <= 0) {
-        if (evalHabitOnDateWithEntries(habit, cursor, entries) === "OK") {
-            curr++; if (curr > best) best = curr;
-        } else {
-            if (evalHabitOnDateWithEntries(habit, cursor, entries) === "NO") curr = 0;
+        const ev = evalHabitOnDateWithEntries(habit, cursor, entries);
+        
+        if (ev === "OK") {
+            curr++; 
+            if (curr > best) best = curr;
+        } else if (ev === "NO") {
+            // Solo rompemos la racha frente a un "NO" explícito. 
+            // Los "NONE" (días sin registrar en hábitos cuantitativos sin meta o días ignorados por frecuencia) mantienen viva la racha.
+            curr = 0;
         }
+        
         cursor = addDays(cursor, 1);
     }
     return { bestStreak: best, currentStreak: curr, lastDate: dates[dates.length - 1] };

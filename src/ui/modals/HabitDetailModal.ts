@@ -5,9 +5,10 @@ import {
 	getStreakInfoForHabit,
 	getOverallScoreForHabit,
 	getWeekdayStatsForHabit,
-	HabitDateRange,
+	buildHeatmapData,
 	WeekdayKey
 } from "../../core/analytics";
+import { todayString, addDays } from "../../core/../utils/dates";
 
 interface HabitDetailModalOptions {
 	storage: HabitStorage;
@@ -27,10 +28,21 @@ export class HabitDetailModal extends Modal {
 	async onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.addClass("habit-entry-modal");
+		contentEl.addClass("habit-modal");
+		contentEl.addClass("habit-detail-modal");
 
-		const title = contentEl.createEl("h2", { text: this.habit.name });
-		title.style.marginBottom = "8px";
+		// Header with habit icon & title
+		const habitHeader = contentEl.createDiv("ht-detail-header");
+		const habitIcon = habitHeader.createDiv("ht-detail-header-icon");
+		habitIcon.style.backgroundColor = `${this.habit.color}20`;
+		habitIcon.style.color = this.habit.color;
+		habitIcon.setText(this.habit.icon || "✨");
+		
+		const habitTitleBlock = habitHeader.createDiv("ht-detail-header-info");
+		habitTitleBlock.createEl("h2", { text: this.habit.name });
+		if (this.habit.category) {
+			habitTitleBlock.createDiv("ht-detail-category").setText(this.habit.category);
+		}
 
 		// PRE-LOAD all needed data in parallel
 		const [overall, streak, weekdayStats] = await Promise.all([
@@ -39,79 +51,85 @@ export class HabitDetailModal extends Modal {
 			getWeekdayStatsForHabit(this.storage, this.habit.id)
 		]);
 
-		// Date range from entries
 		const entries = await this.storage.getEntries(this.habit.id);
 		const dates = Object.keys(entries.entries).sort();
-		const rangeText = dates.length > 0
-			? `${dates[0]} → ${dates[dates.length - 1]}`
-			: "Sin registros aún";
 
-		contentEl.createEl("div", { cls: "hem-date", text: `Rango: ${rangeText}` });
+		// --- Stats Cards ---
+		const statsGrid = contentEl.createDiv("ht-detail-stats-grid");
 
-		// Score summary
-		const summarySection = contentEl.createEl("div", { cls: "hem-field" });
-		summarySection.createEl("div", { cls: "hem-label", text: "Resumen" });
-		const summaryText = summarySection.createEl("div");
-		summaryText.style.fontSize = "0.85rem";
-
-		if (overall.total === 0) {
-			summaryText.setText("Aún no hay suficientes datos para calcular un score.");
-		} else {
-			summaryText.setText(`Días OK: ${overall.ok} / ${overall.total}  (${overall.percent}%)`);
-		}
-
-		// Streaks
-		const streakSection = contentEl.createEl("div", { cls: "hem-field" });
-		streakSection.createEl("div", { cls: "hem-label", text: "Rachas" });
-		const streakList = streakSection.createEl("ul");
-		streakList.style.margin = "0";
-		streakList.style.paddingLeft = "1.2rem";
-		streakList.style.fontSize = "0.85rem";
-
-		streakList.createEl("li").setText(`Racha actual: ${streak.currentStreak} día(s)`);
-		streakList.createEl("li").setText(`Mejor racha histórica: ${streak.bestStreak} día(s)`);
-		if (streak.lastDate) {
-			streakList.createEl("li").setText(`Último día con registro: ${streak.lastDate}`);
-		}
-
-		// Weekday distribution table
-		const weekdaySection = contentEl.createEl("div", { cls: "hem-field" });
-		weekdaySection.createEl("div", { cls: "hem-label", text: "Distribución por día de la semana" });
-
-		const table = weekdaySection.createEl("table");
-		table.style.width = "100%";
-		table.style.borderCollapse = "collapse";
-		table.style.fontSize = "0.8rem";
-
-		const thead = table.createEl("thead");
-		const headRow = thead.createEl("tr");
-		for (const h of ["Día", "OK / Total", "% OK"]) {
-			const th = headRow.createEl("th", { text: h });
-			th.style.textAlign = "left";
-			th.style.padding = "2px 4px";
-			th.style.borderBottom = "1px solid var(--background-modifier-border)";
-		}
-
-		const tbody = table.createEl("tbody");
-		const order: WeekdayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-		const labels: Record<WeekdayKey, string> = {
-			Mon: "Lun", Tue: "Mar", Wed: "Mié", Thu: "Jue", Fri: "Vie", Sat: "Sáb", Sun: "Dom"
+		const addStatCard = (label: string, value: string, sub: string, color: string) => {
+			const card = statsGrid.createDiv("ht-detail-stat-card");
+			card.createDiv("ht-detail-stat-label").setText(label.toUpperCase());
+			const v = card.createDiv("ht-detail-stat-value");
+			v.setText(value);
+			v.style.color = color;
+			card.createDiv("ht-detail-stat-sub").setText(sub);
 		};
 
-		for (const key of order) {
-			const stats = weekdayStats[key];
-			const row = tbody.createEl("tr");
-			const cDay = row.createEl("td", { text: labels[key] });
-			cDay.style.padding = "2px 4px";
-			const cRatio = row.createEl("td", { text: `${stats.ok} / ${stats.total}` });
-			cRatio.style.padding = "2px 4px";
-			const cPercent = row.createEl("td", { text: `${stats.percent}%` });
-			cPercent.style.padding = "2px 4px";
+		addStatCard("Score", `${overall.percent}%`, `${overall.ok}/${overall.total} días`, this.habit.color);
+		addStatCard("Racha Actual", `${streak.currentStreak}`, `Máxima: ${streak.bestStreak}`, "#FF6321");
+		
+		const firstDate = dates[0] || "—";
+		addStatCard("Desde", firstDate, streak.lastDate ? `Último: ${streak.lastDate}` : "Sin fecha", "#6366F1");
+
+		// --- HEATMAP (GitHub Style) ---
+		const heatmapSection = contentEl.createDiv("ht-detail-section");
+		heatmapSection.createDiv("ht-detail-section-title").setText("Actividad — Últimos 12 Meses");
+		
+		const heatmapContainer = heatmapSection.createDiv("ht-heatmap-container");
+		const heatmapData = buildHeatmapData(this.habit, entries);
+		
+		const today = todayString();
+		const daysToRender = 364;
+		
+		for (let i = daysToRender; i >= 0; i--) {
+			const d = addDays(today, -i);
+			const box = heatmapContainer.createDiv("ht-heatmap-box");
+			const status = heatmapData[d];
+			
+			if (status === "OK") {
+				box.style.backgroundColor = this.habit.color;
+				box.style.opacity = "0.9";
+			} else if (status === "NO") {
+				box.addClass("is-no");
+			}
+			box.title = `${d}: ${status || "Sin datos"}`;
 		}
 
-		// Footer
-		const footer = contentEl.createEl("div", { cls: "hem-actions" });
-		const closeBtn = footer.createEl("button", { cls: "ht-btn-secondary", text: "Cerrar" });
-		closeBtn.addEventListener("click", () => this.close());
+		// Leyenda del heatmap
+		const legend = heatmapSection.createDiv("ht-heatmap-legend");
+		legend.createSpan({ cls: "ht-heatmap-legend-label", text: "Menor" });
+		const legendBoxes = legend.createDiv("ht-heatmap-legend-boxes");
+		["rgba(255,255,255,0.05)", `${this.habit.color}30`, `${this.habit.color}60`, `${this.habit.color}90`, this.habit.color].forEach(color => {
+			const b = legendBoxes.createDiv("ht-heatmap-box");
+			b.style.backgroundColor = color;
+		});
+		legend.createSpan({ cls: "ht-heatmap-legend-label", text: "Mayor" });
+
+		// --- Patrón Semanal ---
+		const weekSection = contentEl.createDiv("ht-detail-section");
+		weekSection.createDiv("ht-detail-section-title").setText("Patrón Semanal");
+
+		const weekGrid = weekSection.createDiv("ht-weekly-pattern-grid");
+		const order: WeekdayKey[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+		const labels: Record<WeekdayKey, string> = {
+			Mon: "L", Tue: "M", Wed: "X", Thu: "J", Fri: "V", Sat: "S", Sun: "D"
+		};
+
+		const maxPercent = Math.max(...order.map(k => weekdayStats[k].percent), 1);
+
+		order.forEach(key => {
+			const stats = weekdayStats[key];
+			const col = weekGrid.createDiv("ht-weekday-col");
+			
+			const barWrap = col.createDiv("ht-weekday-bar-wrap");
+			const fill = barWrap.createDiv("ht-weekday-bar-fill");
+			fill.style.height = `${(stats.percent / maxPercent) * 100}%`;
+			fill.style.backgroundColor = this.habit.color;
+
+			col.createDiv("ht-weekday-label").setText(labels[key]);
+		});
 	}
+
+	onClose() { this.contentEl.empty(); }
 }

@@ -4,12 +4,10 @@ export type HabitType = "yesno" | "quant";
 export type GoalType = "atLeast" | "atMost" | "exactly";
 export type HabitSortMode = "manual" | "alpha" | "color";
 export type DayBarOrientation = "recent-right" | "recent-left";
-export type FrequencyMode = "daily";
-
-// Evaluación (OK/NO)
+export type FrequencyMode = "daily" | "weekly" | "weekdays" | "custom";
 export type HabitEval = "OK" | "NO" | "NONE";
 
-export const MOOD_OPTIONS = ["🙂", "😑", "😔"] as const;
+export const MOOD_OPTIONS = ["😫", "😔", "😑", "🙂", "🔥"] as const;
 export type MoodEmoji = typeof MOOD_OPTIONS[number];
 
 export interface HabitGoal {
@@ -20,6 +18,7 @@ export interface HabitGoal {
 
 export interface HabitFrequency {
     mode: FrequencyMode;
+    daysPerWeek?: number; // Para modo "weekly" o "custom"
 }
 
 // ----------
@@ -45,6 +44,7 @@ export interface Habit {
     name: string;
     color: string;
     icon?: string;
+    category?: string;
     type: HabitType;
     frequency: HabitFrequency;
     goal?: HabitGoal;
@@ -67,6 +67,9 @@ export interface HabitPluginSettings {
     soundsEnabled: boolean;
     backupFolder: string;
     sortMode: HabitSortMode;
+    daysVisible: number;
+    showDailyProgress: boolean;
+    confirmArchive: boolean;
 }
 
 export interface HabitData {

@@ -1,325 +1,1541 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
 /* ==========================================================================
-   1. CONFIGURACIÓN BASE
+   Habit Loop Tracker — Adaptive Obsidian Theme
+   Todas las variables apuntan a los tokens nativos de Obsidian.
+   El plugin heredará automáticamente el acento y tema seleccionado.
    ========================================================================== */
+
+/* Map de variables del plugin → tokens de Obsidian */
+.habit-tracker-root,
+.habit-modal,
+.habit-analytics-modal,
+.habit-entry-modal,
+.habit-detail-modal {
+    /* Acento → Usa el acento de Obsidian */
+    --ht-accent: var(--interactive-accent);
+    --ht-accent-hover: var(--interactive-accent-hover);
+    --ht-on-accent: var(--text-on-accent);
+
+    /* Fondos → Usa la jerarquía native de Obsidian */
+    --ht-bg-main: var(--background-primary);
+    --ht-bg-grid: var(--background-secondary);
+    --ht-bg-card: var(--background-secondary-alt, var(--background-secondary));
+
+    /* Bordes */
+    --ht-border: var(--background-modifier-border);
+
+    /* Textos */
+    --ht-text-main: var(--text-normal);
+    --ht-text-muted: var(--text-muted);
+
+    /* Elementos interactivos */
+    --ht-hover-bg: var(--background-modifier-hover);
+
+    /* Shape & Motion (sin cambio) */
+    --ht-row-height: 75px;
+    --ht-radius-3xl: 24px;
+    --ht-radius-2xl: 16px;
+    --ht-radius-xl: 12px;
+    --ht-radius-lg: 8px;
+    --ht-transition-fast: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    --ht-transition-smooth: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    --ht-font-sans: 'Inter', var(--font-interface), ui-sans-serif, system-ui, sans-serif;
+    --ht-font-display: 'Space Grotesk', var(--font-interface), sans-serif;
+    --ht-left-col-width: 250px;
+}
+
+/* Ajustes específicos modo OSCURO */
+.theme-dark .habit-tracker-root,
+.theme-dark .habit-modal,
+.theme-dark .habit-analytics-modal,
+.theme-dark .habit-entry-modal {
+    --ht-bg-grid: color-mix(in srgb, var(--background-primary) 70%, black);
+    --ht-bg-card: color-mix(in srgb, var(--background-primary) 85%, white 5%);
+    --ht-border: rgba(255, 255, 255, 0.1);
+    --ht-hover-bg: rgba(255, 255, 255, 0.04);
+}
+
+/* Ajustes específicos modo CLARO */
+.theme-light .habit-tracker-root,
+.theme-light .habit-modal,
+.theme-light .habit-analytics-modal,
+.theme-light .habit-entry-modal {
+    --ht-bg-grid: color-mix(in srgb, var(--background-primary) 80%, black 5%);
+    --ht-bg-card: var(--background-primary);
+    --ht-border: rgba(0, 0, 0, 0.1);
+    --ht-hover-bg: rgba(0, 0, 0, 0.03);
+}
+
+
+/* Base Root */
 .habit-tracker-root {
-    --ht-row-height: 50px;
-    display: flex; flex-direction: column; height: 100%; padding: 16px;
-    background-color: var(--background-primary);
-    font-family: var(--font-ui);
-}
-
-/* Header */
-.habit-tracker-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 16px; flex-shrink: 0;
-}
-.ht-btn {
-    cursor: pointer; font-size: 0.9em; padding: 6px 12px; border-radius: 6px;
-    transition: all 0.2s; font-weight: 500; margin-left: 8px;
-}
-.ht-btn:hover { background-color: var(--background-modifier-hover); }
-.mod-cta { background-color: var(--interactive-accent); color: var(--text-on-accent); border: none; }
-
-/* ==========================================================================
-   2. GRID PRINCIPAL (LAYOUT & RESIZER)
-   ========================================================================== */
-.ht-main {
     display: flex;
-    flex: 1;
-    min-height: 0; /* Vital para scroll anidado */
-    overflow: hidden;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    position: relative;
-}
-
-/* Columna Izquierda */
-.ht-main-left {
-    /* El ancho se controla por JS, aquí ponemos el default */
-    width: 160px;
-    flex-shrink: 0;
-    display: flex; flex-direction: column;
-    background: var(--background-secondary);
-    z-index: 3;
-    overflow-y: auto;
-    scrollbar-width: none;
-    position: relative;
-}
-.ht-main-left::-webkit-scrollbar { display: none; }
-
-/* Resizer (Barra de arrastre de ancho) */
-.ht-resizer {
-    width: 10px; /* Zona táctil amplia */
-    cursor: col-resize;
-    background-color: var(--background-modifier-border);
-    flex-shrink: 0;
-    z-index: 4;
-    transition: background-color 0.2s;
-    touch-action: none;
-    user-select: none;
-}
-.ht-resizer:hover, .ht-resizer:active {
-    background-color: var(--interactive-accent);
-}
-
-/* Columna Derecha */
-.ht-main-right {
-    flex: 1; display: flex; flex-direction: column;
-    overflow: auto; position: relative; min-width: 0;
-}
-.ht-scroll-strip { min-width: max-content; display: flex; flex-direction: column;}
-
-/* ==========================================================================
-   3. FILAS Y ALINEACIÓN
-   ========================================================================== */
-.ht-left-header-spacer,
-.habit-tracker-day-bar,
-.ht-habit-meta,
-.ht-habit-cells-row {
-    height: var(--ht-row-height) !important;
-    min-height: var(--ht-row-height) !important;
-    max-height: var(--ht-row-height) !important;
-    box-sizing: border-box;
-    display: flex; align-items: center; margin: 0 !important;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
-
-/* Headers Sticky */
-.ht-left-header-spacer {
-    padding-left: 16px; font-weight: 600; font-size: 0.8em; color: var(--text-muted);
-    position: sticky; top: 0; background: var(--background-secondary); z-index: 4;
-}
-.habit-tracker-day-bar {
-    position: sticky; top: 0; background: var(--background-secondary); z-index: 2;
-}
-
-/* ==========================================================================
-   4. ARRASTRE Y ELEMENTOS VISUALES (MÓVIL)
-   ========================================================================== */
-/* Drag Handle (Puntitos) */
-.ht-drag-handle {
-    cursor: grab;
-    margin-right: 2px;
-    display: flex; align-items: center; justify-content: center;
-    padding: 0 12px; /* Área táctil generosa */
+    flex-direction: column;
     height: 100%;
-    font-size: 1.4em;
-    opacity: 0.8;
-    touch-action: none; /* Previene scroll nativo */
+    padding: 32px;
+    background-color: var(--ht-bg-main);
+    font-family: var(--ht-font-sans);
+    color: var(--ht-text-main);
+    gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    animation: ht-fade-in 0.8s ease-out;
 }
-.ht-drag-handle:active { opacity: 1; }
 
-/* Feedback visual al arrastrar */
-.ht-habit-meta.is-dragging-source {
+/* Force dark theme typography */
+.habit-tracker-root h1,
+.habit-tracker-root h2,
+.habit-tracker-root h3 {
+    font-family: var(--ht-font-display);
+    color: var(--ht-text-main);
+}
+
+@keyframes ht-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header & Controls */
+.habit-tracker-root .habit-tracker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-shrink: 0;
+    padding-bottom: 16px;
+}
+
+.habit-tracker-root .habit-tracker-header h2 {
+    margin: 0;
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    color: var(--ht-text-main);
+}
+
+/* Progress Bar in Header */
+.ht-header-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ht-daily-progress-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.ht-daily-progress-bar {
+    width: 192px;
+    height: 6px;
+    background: var(--background-modifier-border);
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+}
+
+.ht-daily-progress-fill {
+    height: 100%;
+    background: var(--ht-accent);
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ht-daily-progress-text {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ht-text-muted);
+}
+
+
+/* Buttons & Selects */
+.habit-tracker-root .ht-header-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.habit-tracker-root .ht-btn {
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 12px 24px;
+    border-radius: var(--ht-radius-2xl);
+    transition: var(--ht-transition-fast);
+    font-weight: 700;
+    border: none;
+    background: var(--background-modifier-hover);
+    color: var(--ht-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    outline: none;
+}
+
+.habit-tracker-root .ht-btn:hover {
+    background-color: var(--background-modifier-border);
+    color: var(--ht-text-main);
+}
+
+.habit-tracker-root .ht-btn.mod-cta {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    padding: 12px 24px;
+}
+
+.habit-tracker-root .ht-btn.mod-cta:hover {
+    background: var(--interactive-accent-hover);
+}
+
+.habit-tracker-root select.ht-category-select,
+.habit-tracker-root select {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--ht-text-main);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0;
+    cursor: pointer;
+    background-image: none;
+    outline: none;
+}
+
+.habit-tracker-root select:focus {
+    outline: none;
+}
+
+/* Main Grid Container */
+.habit-tracker-root .ht-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    border: 1px solid var(--ht-border);
+    border-radius: 32px;
+    background: var(--ht-bg-grid);
+    overflow: auto;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: var(--background-modifier-border) transparent;
+}
+
+.habit-tracker-root .ht-main::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+
+.habit-tracker-root .ht-main::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.habit-tracker-root .ht-main::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border);
+    border-radius: 10px;
+}
+
+.habit-tracker-root .ht-main::-webkit-scrollbar-thumb:hover {
+    background: var(--background-modifier-border-hover, var(--background-modifier-border));
+}
+
+
+.habit-tracker-root .ht-table-header {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--ht-bg-grid);
+    border-bottom: 1px solid var(--ht-border);
+    height: 70px;
+    width: fit-content;
+    min-width: 100%;
+}
+
+.habit-tracker-root .ht-left-header {
+    flex-shrink: 0;
+    width: var(--ht-left-col-width);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
+    background: var(--ht-bg-grid);
+    position: sticky;
+    left: 0;
+    z-index: 101;
+}
+
+.habit-tracker-root .ht-resizer {
+    width: 6px;
+    cursor: col-resize;
+    background: transparent;
+    position: sticky;
+    left: var(--ht-left-col-width);
+    z-index: 102;
+    margin-left: -3px;
+    transition: var(--ht-transition-fast);
+}
+
+.habit-tracker-root .habit-tracker-day-bar {
+    display: flex;
+    flex-shrink: 0;
+    padding-right: 40px;
+}
+
+.habit-tracker-root .ht-table-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.habit-tracker-root .ht-row {
+    display: flex;
+    border-bottom: 1px solid var(--ht-border);
+    height: var(--ht-row-height);
+    transition: var(--ht-transition-fast);
+    width: fit-content;
+    min-width: 100%;
+}
+
+.habit-tracker-root .ht-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.habit-tracker-root .ht-habit-meta {
+    flex-shrink: 0;
+    width: var(--ht-left-col-width);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    background: var(--ht-bg-grid);
+    position: sticky;
+    left: 0;
+    z-index: 50;
+    transition: var(--ht-transition-fast);
+    border-right: 1px solid transparent;
+}
+
+.habit-tracker-root .ht-row:hover .ht-habit-meta {
+    background: #151515;
+}
+
+.habit-tracker-root .ht-habit-cells-container {
+    display: flex;
+    flex-shrink: 0;
+    padding-right: 40px;
+}
+
+/* Day Bar Styles */
+.habit-tracker-root .ht-day-cell {
+    width: 60px;
+    min-width: 60px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    border-right: 1px solid transparent;
+}
+
+.habit-tracker-root .ht-day-cell.is-today {
+    background: var(--background-modifier-hover);
+}
+
+.habit-tracker-root .ht-day-weekday {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--ht-text-muted);
+}
+
+.habit-tracker-root .ht-day-date {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--ht-text-muted);
+}
+
+.habit-tracker-root .ht-day-cell.is-today .ht-day-date {
+    color: var(--ht-accent);
+}
+
+/* Habit Meta Details */
+.habit-tracker-root .ht-drag-handle {
+    opacity: 0;
+    margin-right: 8px;
+    cursor: grab;
+    transition: opacity 0.2s;
+    color: var(--ht-text-muted);
+}
+
+.habit-tracker-root .ht-row:hover .ht-drag-handle {
     opacity: 0.5;
-    background: var(--background-modifier-active-hover);
-}
-.ht-habit-meta.is-drop-target {
-    border-top: 2px solid var(--interactive-accent) !important;
-    background: rgba(var(--interactive-accent-rgb), 0.1);
 }
 
-/* Meta info del hábito */
-.ht-habit-meta {
-    padding: 0 8px; cursor: pointer; transition: background 0.15s;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.ht-habit-meta:hover { background: var(--background-primary); }
-
-.ht-habit-name {
-    font-size: 0.95em; font-weight: 500; color: var(--text-normal);
-    overflow: hidden; text-overflow: ellipsis;
-}
-
-/* Barra de color del hábito (Descomentada) */
-.ht-habit-color {
-    width: 4px; height: 60%; border-radius: 2px; margin-right: 8px; flex-shrink: 0;
+.habit-tracker-root .ht-habit-icon {
+    width: 6px;
+    height: 32px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+    color: transparent !important;
 }
 
-.ht-habit-icon { margin-right: 6px; font-size: 1.1em; flex-shrink: 0; }
-
-/* ==========================================================================
-   5. CELDAS (DÍAS Y CHECKBOXES)
-   ========================================================================== */
-.ht-day-cell, .ht-habit-cell {
-    width: 48px; flex-shrink: 0; height: 100%;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    border-right: 1px solid var(--background-modifier-border-hover);
+.habit-tracker-root .ht-habit-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    justify-content: center;
 }
-.ht-day-cell.is-today { background: var(--interactive-accent); color: var(--text-on-accent); }
-.ht-day-weekday { font-size: 0.65em; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
-.ht-day-date { font-size: 0.85em; font-weight: 600; }
 
-.ht-habit-cell { cursor: pointer; position: relative; font-size: 14px; }
-.ht-habit-cell:hover { background: var(--background-modifier-hover); }
-
-.ht-cell-content {
-    width: 32px; height: 32px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center; transition: transform 0.1s;
+.habit-tracker-root .ht-habit-name-text {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-normal);
+    transition: color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.ht-cell-content:active { transform: scale(0.9); }
-.ht-cell-content.is-done { background-color: rgba(var(--interactive-accent-rgb), 0.1); font-weight: bold; }
-.ht-cell-content.is-fail { background-color: rgba(255, 80, 80, 0.1); color: var(--text-error); }
 
-.ht-cell-note {
-    position: absolute; top: 4px; right: 4px; width: 8px; height: 8px;
-    background-color: var(--text-accent); border-radius: 50%;
-    border: 1px solid var(--background-primary); z-index: 5;
-    cursor: pointer; transition: transform 0.2s;
+.habit-tracker-root .ht-row:hover .ht-habit-name-text {
+    color: var(--text-normal);
 }
-.ht-cell-note:hover { transform: scale(1.3); }
 
-/* ==========================================================================
-   6. MODALES (OPTIMIZADOS PARA TECLADO MÓVIL – FIX FINAL ANDROID)
-   ========================================================================== */
+.habit-tracker-root .ht-habit-category {
+    font-size: 0.625rem;
+    color: var(--ht-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+}
 
-/* 6.1 Ajuste del contenedor padre que Obsidian usa para centrar (solo móvil) */
-.is-mobile .modal-container {
-    align-items: flex-start !important; 
-    padding-top: 40px !important;
+/* Cells & Content */
+.habit-tracker-root .ht-habit-cell {
+    width: 60px;
+    min-width: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    border-right: 1px solid transparent;
+}
+
+.habit-tracker-root .ht-habit-cell.is-today {
+    background: var(--background-modifier-hover);
+}
+
+.habit-tracker-root .ht-habit-cell:active {
+    transform: scale(0.9);
+}
+
+.habit-tracker-root .ht-cell-content {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--ht-transition-smooth);
+    position: relative;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.habit-tracker-root .ht-cell-content:hover {
+    border-color: var(--text-faint);
+}
+
+.habit-tracker-root .ht-cell-content.is-done {
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.5);
+    border: none;
+}
+
+.habit-tracker-root .ht-cell-content.is-done svg {
+    width: 20px;
+    height: 20px;
+    color: inherit;
+}
+
+.habit-tracker-root .ht-cell-content.is-fail {
+    color: #EF4444;
+    opacity: 0.6;
+}
+
+.habit-tracker-root .ht-cell-value-text {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: inherit;
+}
+
+/* Long-press feedback */
+.habit-tracker-root .ht-habit-cell.ht-cell-long-press .ht-cell-content {
+    transform: scale(0.8);
+    box-shadow: 0 0 0 3px var(--interactive-accent);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.habit-tracker-root .ht-habit-cell {
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+
+/* Modals Scoping */
+.habit-modal {
+    max-width: 530px !important;
+    width: 90vw !important;
+    border-radius: 24px !important;
+    background: var(--ht-bg-card) !important;
+    border: 1px solid var(--ht-border) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+    font-family: var(--ht-font-sans);
+    color: var(--ht-text-main);
+}
+
+.habit-analytics-modal {
+    border-radius: 24px !important;
+    background: var(--ht-bg-card) !important;
+    border: 1px solid var(--ht-border) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+    font-family: var(--ht-font-sans);
+    color: var(--ht-text-main);
+}
+
+.modal-content.habit-modal {
+    padding: 24px 50px !important;
+    scrollbar-width: thin;
+    scrollbar-color: var(--background-modifier-border) transparent;
+}
+
+.modal-content.habit-analytics-modal {
+    padding: 24px 50px !important;
+    scrollbar-width: thin;
+    scrollbar-color: var(--background-modifier-border) transparent;
+}
+
+.habit-modal h2,
+.habit-analytics-modal h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-family: var(--ht-font-display);
+    color: var(--ht-text-main);
+    border: none;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    padding-top: 0;
+    border-bottom: 1px solid var(--ht-border);
+    width: 100%;
+}
+
+.habit-modal .setting-item,
+.habit-analytics-modal .setting-item {
+    border: none !important;
+    padding: 6px 0 !important;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
+.habit-modal .setting-item-name,
+.habit-analytics-modal .setting-item-name {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: var(--ht-text-muted) !important;
+}
+
+.habit-modal .setting-item-control,
+.habit-analytics-modal .setting-item-control {
+    width: 100% !important;
+    justify-content: flex-start !important;
+}
+
+.habit-modal .setting-item-description {
+    display: none;
+}
+
+.habit-modal input[type="text"],
+.habit-modal input[type="number"],
+.habit-modal select {
+    box-sizing: border-box !important;
+    width: 100%;
+    height: 38px !important;
+    background: var(--background-modifier-hover) !important;
+    border: 1px solid var(--ht-border) !important;
+    border-radius: var(--ht-radius-xl) !important;
+    padding: 0 16px !important;
+    color: var(--ht-text-main) !important;
+    font-size: 0.875rem !important;
+    transition: var(--ht-transition-fast);
+    outline: none;
+    box-shadow: none;
+}
+
+.habit-modal input:focus,
+.habit-modal select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 50%, transparent) !important;
+}
+
+/* Custom Category Suggester */
+.ht-category-suggester {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    min-width: 200px;
+    text-align: left;
+    /* FIX ALIGNMENT */
+    margin-top: 4px;
+    padding: 4px;
+    background: var(--ht-bg-card);
+    border: 1px solid var(--ht-border);
+    border-radius: var(--ht-radius-lg);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.ht-suggester-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    border-radius: var(--ht-radius-lg);
+    transition: var(--ht-transition-fast);
+}
+
+.ht-suggester-item:hover {
+    background: var(--background-modifier-hover);
+    color: var(--ht-accent);
+}
+
+.ht-fake-select {
+    box-sizing: border-box !important;
+    width: 100%;
+    min-width: 200px;
+    height: 38px !important;
+    background: var(--background-modifier-hover) !important;
+    border: 1px solid var(--ht-border) !important;
+    border-radius: var(--ht-radius-xl) !important;
+    padding: 0 16px !important;
+    margin: 0;
+    color: var(--ht-text-main) !important;
+    font-size: 0.875rem !important;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: var(--ht-transition-fast);
+}
+
+.ht-fake-select:hover {
+    border-color: var(--interactive-accent) !important;
+}
+
+.ht-fake-select::after {
+    content: "▼";
+    font-size: 0.7em;
+    opacity: 0.5;
+    margin-left: 8px;
+}
+
+/* Custom Modal Buttons */
+.habit-modal button:not(.modal-close-button) {
+    padding: 16px;
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: 1rem;
+    background: var(--background-modifier-hover);
+    color: var(--ht-text-main);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    margin-top: 16px;
+}
+
+.habit-modal button:not(.modal-close-button):hover {
+    background: var(--background-modifier-border);
+}
+
+.habit-modal button.mod-warning {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--text-error);
+}
+
+.habit-modal button.mod-warning:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.habit-modal button.mod-cta {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    box-shadow: 0 10px 15px -3px color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+}
+
+.habit-modal button.mod-cta:hover {
+    background: var(--interactive-accent-hover);
+}
+
+/* Color Dropdown/Grid */
+.ht-color-grid {
+    display: flex;
+    gap: 5px;
+}
+
+.ht-color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: var(--ht-transition-fast);
+    opacity: 0.6;
+}
+
+.ht-color-swatch:hover {
+    opacity: 1;
+}
+
+.ht-color-swatch.is-active {
+    opacity: 1;
+    box-shadow: 0 0 0 2px #1A1A1A, 0 0 0 4px #fff;
+    transform: scale(1.1);
+}
+
+/* Analytics Elements */
+.habit-analytics-modal .ham-card {
+    padding: 24px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--ht-border);
+    transition: var(--ht-transition-fast);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.habit-analytics-modal .ham-section-title {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
+}
+
+.habit-analytics-modal h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    font-family: var(--ht-font-display);
+    color: var(--ht-accent);
+    margin: 0;
+}
+
+/* Mood Selector 5 Levels */
+.ht-mood-selector {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: space-between;
+    background: var(--background-modifier-hover);
+    padding: 8px;
+    border-radius: 16px;
+    border: 1px solid var(--ht-border);
+}
+
+.ht-mood-btn {
+    flex: 1;
+    font-size: 1.25rem;
+    padding: 10px;
+    border-radius: 12px;
+    background: transparent;
+    border: none;
+    color: var(--ht-text-muted);
+    cursor: pointer;
+    transition: var(--ht-transition-fast);
+    margin: 0;
+}
+
+.ht-mood-btn:hover {
+    color: var(--ht-text-main);
+}
+
+.ht-mood-btn.is-selected {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* Utils */
+.ht-is-hidden {
+    display: none !important;
+}
+
+.ht-empty {
+    padding: 80px;
+    text-align: center;
+    font-family: var(--ht-font-display);
+    color: var(--ht-text-muted);
+}
+
+/* Frequency Blocks */
+.ht-custom-freq-block {
+    margin: 12px 0;
+    padding: 16px;
+    border-radius: var(--ht-radius-xl);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed var(--ht-border);
+    animation: ht-fade-in 0.3s ease-out;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ht-custom-freq-block.is-hidden {
+    display: none;
+}
+
+/* Heatmap Details */
+.ht-heatmap-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 12px;
+}
+
+.ht-heatmap-box {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: var(--ht-transition-fast);
+    cursor: crosshair;
+}
+
+.ht-heatmap-box:hover {
+    transform: scale(1.3);
+    z-index: 10;
+    border: 1px solid #FFF;
+}
+
+.ht-heatmap-box.is-no {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+/* =====================================================================
+   GLOBAL DASHBOARD MODAL
+   ===================================================================== */
+
+/* Progress ring card */
+.ht-dashboard-ring-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 32px;
+    border-radius: 32px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--ht-border);
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.ht-ring-svg {
+    transform: rotate(-90deg);
+    display: block;
+}
+
+.ht-ring-track {
+    stroke: rgba(255, 255, 255, 0.05);
+}
+
+.ht-ring-progress {
+    stroke: var(--ht-accent);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ht-ring-info {
+    position: absolute;
+    top: 32px;
+    left: 0;
+    right: 0;
+    height: 128px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.ht-ring-percent {
+    font-family: var(--ht-font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.ht-ring-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
+    margin-top: 4px;
+}
+
+.ht-ring-subtext {
+    font-size: 0.875rem;
+    color: var(--ht-text-muted);
+    margin-top: 16px;
+}
+
+/* Stats Cards Row */
+.ht-dashboard-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.ht-stat-card {
+    padding: 20px 16px;
+    border-radius: var(--ht-radius-2xl);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--ht-border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    text-align: center;
+}
+
+.ht-stat-icon {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+}
+
+.ht-stat-value {
+    font-family: var(--ht-font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.ht-stat-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
+}
+
+/* Dashboard sections */
+.ht-dashboard-section {
+    margin-bottom: 24px;
+}
+
+.ht-dashboard-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
+    margin-bottom: 12px;
+}
+
+/* Streak List */
+.ht-streak-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ht-streak-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-radius: var(--ht-radius-xl);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--ht-border);
+}
+
+.ht-streak-rank {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--ht-text-muted);
+    width: 24px;
+}
+
+.ht-streak-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.ht-streak-icon {
+    font-size: 1.25rem;
+}
+
+.ht-streak-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.ht-streak-badge {
+    font-family: var(--ht-font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    border: 1px solid;
+}
+
+/* Weekly Consistency */
+.ht-week-consistency-card {
+    padding: 20px;
+    border-radius: var(--ht-radius-xl);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--ht-border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ht-week-bar-track {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.ht-week-bar-fill {
+    height: 100%;
+    background: var(--ht-accent);
+    border-radius: 9999px;
+    transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ht-week-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.ht-week-percent {
+    font-family: var(--ht-font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--ht-accent);
+}
+
+.ht-week-label {
+    font-size: 0.875rem;
+    color: var(--ht-text-muted);
+}
+
+/* =====================================================================
+   HABIT DETAIL MODAL
+   ===================================================================== */
+
+.habit-detail-modal .modal-content {
+    padding: 32px !important;
+}
+
+.habit-detail-modal h2 {
+    border-bottom: none !important;
+    margin-bottom: 4px !important;
     padding-bottom: 0 !important;
 }
 
-/* 6.2 Estructura Flex para Modales (Crear/Editar/Analytics) */
-.modal.habit-modal,
-.modal.habit-analytics-modal {
-    display: flex !important;
+/* Header */
+.ht-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--ht-border);
+}
+
+.ht-detail-header-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    flex-shrink: 0;
+}
+
+.ht-detail-header-info {
+    display: flex;
     flex-direction: column;
-    
-    /* Ocupar casi toda la altura disponible si es necesario */
-    max-height: 90vh !important; 
-    height: auto;
-    width: 92vw;
-    max-width: 550px;
-    
-    background-color: var(--background-primary);
-    border-radius: 12px;
-    padding: 0 !important;
-    margin: 0 auto !important;
-    
-    /* Gestión del desbordamiento */
-    overflow: hidden; 
-    position: relative;
+    gap: 4px;
 }
 
-/* 6.3 Área de Contenido (Scrollable) */
-.modal.habit-modal .modal-content,
-.modal.habit-analytics-modal .modal-content {
-    flex: 1 1 auto;            /* Se estira y encoge */
-    overflow-y: auto;          /* Scroll vertical OBLIGATORIO */
-    min-height: 0; 
-    padding: 20px;
-    padding-bottom: 10px;
+.ht-detail-header-info h2 {
+    font-size: 1.5rem !important;
 }
 
-/* --- TRUCO ANDROID: Colchón para que los inputs puedan subir sobre el teclado --- */
-.modal.habit-modal .modal-content {
-    padding-bottom: 150px !important;
+.ht-detail-category {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
 }
 
-/* 6.4 Footer (Botones) */
-.habit-modal-footer { 
-    flex: 0 0 auto; /* No se encoge */
-    
-    background-color: var(--background-secondary);
-    border-top: 1px solid var(--background-modifier-border);
-    
-    padding: 12px 20px;
-    display: flex; 
-    justify-content: flex-end; 
+/* Stats Grid */
+.ht-detail-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    z-index: 10;
+    margin-bottom: 24px;
 }
 
-/* 6.5 Inputs y estructura de settings (móvil-friendly) */
-.habit-modal input, 
-.habit-modal select, 
-.habit-modal textarea { 
-    width: 100%; 
+.ht-detail-stat-card {
+    padding: 20px 16px;
+    border-radius: var(--ht-radius-xl);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--ht-border);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ht-detail-stat-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
+}
+
+.ht-detail-stat-value {
+    font-family: var(--ht-font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+    margin: 6px 0 2px;
+}
+
+.ht-detail-stat-sub {
+    font-size: 0.75rem;
+    color: var(--ht-text-muted);
+}
+
+/* Detail sections */
+.ht-detail-section {
+    margin-bottom: 24px;
+}
+
+.ht-detail-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
+    margin-bottom: 12px;
+}
+
+/* Heatmap legend */
+.ht-heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.ht-heatmap-legend-label {
+    font-size: 0.625rem;
+    color: var(--ht-text-muted);
+    font-weight: 600;
+}
+
+.ht-heatmap-legend-boxes {
+    display: flex;
+    gap: 4px;
+}
+
+/* Weekly pattern bars */
+.ht-weekly-pattern-grid {
+    display: flex;
+    gap: 8px;
+    height: 80px;
+    align-items: flex-end;
+}
+
+.ht-weekday-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    height: 100%;
+}
+
+.ht-weekday-bar-wrap {
+    flex: 1;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+}
+
+.ht-weekday-bar-fill {
+    width: 100%;
+    border-radius: 6px 6px 0 0;
+    transition: height 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    min-height: 2px;
+}
+
+.ht-weekday-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--ht-text-muted);
+}
+
+/* =====================================================================
+   ENTRY MODAL & FORM POLISH
+   ===================================================================== */
+
+/* Yes/No Buttons */
+.habit-modal .ht-entry-yesno-row {
+    display: flex;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.habit-modal .ht-entry-yesno-row button,
+.habit-entry-modal .ht-entry-yesno-row button {
+    flex: 1;
+    padding: 20px;
+    border-radius: var(--ht-radius-xl);
+    font-size: 1.25rem;
+    font-weight: 700;
+    border: 1px solid var(--ht-border);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--ht-text-muted);
+    cursor: pointer;
+    transition: var(--ht-transition-fast);
+    margin-top: 0;
+}
+
+.habit-modal .ht-entry-yesno-row button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--ht-text-main);
+}
+
+.habit-modal .ht-entry-yesno-row button.is-active[data-value="✔"],
+.habit-entry-modal .ht-entry-yesno-row button.is-active {
+    border-color: #10B981 !important;
+    background: rgba(16, 185, 129, 0.1) !important;
+    color: #10B981 !important;
+}
+
+.ht-entry-yesno-row button.is-active {
+    border-color: #10B981;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10B981;
+}
+
+.ht-entry-yesno-row button:last-child.is-active {
+    border-color: #EF4444 !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #EF4444 !important;
+}
+
+/* Entry modals cleanup */
+.habit-entry-modal {
+    background: var(--ht-bg-card) !important;
+    border-radius: 24px !important;
+    border: 1px solid var(--ht-border) !important;
+}
+
+.habit-entry-modal .modal-content {
+    padding: 32px !important;
+}
+
+.habit-entry-modal h2 {
+    font-family: var(--ht-font-display) !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 4px !important;
+    padding-bottom: 20px !important;
+    border-bottom: 1px solid var(--ht-border) !important;
+}
+
+.habit-entry-modal .ht-modal-subheader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.habit-entry-modal .ht-entry-date-label {
+    font-size: 0.75rem;
+    color: var(--ht-text-muted);
+}
+
+.habit-entry-modal .ht-entry-date {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--ht-accent);
+}
+
+/* Footer buttons */
+.habit-modal .habit-modal-footer,
+.habit-entry-modal .habit-modal-footer {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--ht-border);
+    width: 100%;
+    justify-content: flex-end;
+}
+
+.habit-modal .habit-modal-footer button,
+.habit-entry-modal .habit-modal-footer button {
+    flex: 1;
+    padding: 16px;
+    border-radius: var(--ht-radius-xl);
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: var(--ht-transition-fast);
+    margin-top: 0;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.habit-modal .habit-modal-footer button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.habit-modal .habit-modal-footer button.mod-cta,
+.habit-entry-modal .habit-modal-footer button.mod-cta {
+    background: var(--ht-accent);
+    color: #000;
+    box-shadow: 0 4px 15px -3px rgba(255, 99, 33, 0.3);
+}
+
+.habit-modal .habit-modal-footer button.mod-cta:hover {
+    background: rgba(255, 99, 33, 0.9);
+}
+
+.habit-modal .habit-modal-footer button.mod-warning,
+.habit-entry-modal .habit-modal-footer button.mod-warning {
+    background: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+    flex: 0 0 auto;
+}
+
+.habit-modal .habit-modal-footer button.mod-warning:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+/* Type toggle & goal block */
+.ht-type-toggle {
+    display: flex;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--ht-border);
+    border-radius: var(--ht-radius-xl);
+    padding: 4px;
+    margin: 12px 0;
     box-sizing: border-box;
 }
 
-.habit-modal .setting-item { 
-    border: none; 
-    padding: 8px 0; 
-    flex-direction: column;   /* Labels arriba del input */
-    align-items: flex-start;
-}
-
-.habit-modal .setting-item-info {
-    margin-bottom: 5px;
-    width: 100%;
-}
-.habit-modal .setting-item-control {
-    width: 100%;
-}
-
-/* Lista de Archivados */
-.ht-archived-item { padding: 10px; border-bottom: 1px solid var(--background-modifier-border); }
-.ht-archived-item:hover { background-color: var(--background-secondary); }
-.ht-archived-actions button { margin-left: 5px; cursor: pointer; }
-
-/* ==========================================================================
-   7. ESTILOS ESPECÍFICOS ANALYTICS
-   ========================================================================== */
-
-.ham-header {
-    background: var(--background-secondary); margin: -24px -24px 24px -24px; padding: 24px;
-    display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
-.ham-range-controls { display: flex; gap: 5px; background: var(--background-primary); padding: 4px; border-radius: 8px; }
-.ham-range-btn { background: transparent; border: none; font-size: 0.8em; padding: 4px 10px; border-radius: 6px; cursor: pointer; color: var(--text-muted); font-weight: 600; }
-.ham-range-btn.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
-
-.ham-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 30px; }
-.ham-card { background: var(--background-secondary); padding: 16px; border-radius: 12px; border: 1px solid var(--background-modifier-border); display: flex; flex-direction: column; justify-content: center; }
-.ham-card-value { font-size: 1.8em; font-weight: 700; line-height: 1; margin-top: 4px; }
-.ham-card-title { font-size: 0.75em; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
-.ham-chart-container { position: relative; height: 220px; width: 100%; margin-bottom: 30px; }
-.ham-weekday-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 10px; }
-.ham-weekday-table th, .ham-weekday-table td { text-align: center; padding: 4px; border: none; }
-
-/* ==========================================================================
-   8. ESTILOS DE FORMULARIO EXTRA (Objetivo, Tipo, Contexto, Estado de ánimo)
-   ========================================================================== */
-
-.ht-goal-block {
-    background-color: var(--background-secondary);
-    padding: 12px;
-    border-radius: 8px;
-    margin-top: 10px;
-    border: 1px solid var(--background-modifier-border);
-}
-.ht-goal-block.is-hidden { display: none; }
-
-/* Toggle Buttons (tipo de hábito) */
-.ht-type-toggle {
-    display: flex;
-    background: var(--background-modifier-form-field);
-    padding: 4px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    width: 100%;
-}
-.hem-toggle-btn {
+.ht-type-toggle .hem-toggle-btn {
     flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
     border: none;
     background: transparent;
-    padding: 10px;
-    border-radius: 6px;
-    text-align: center;
+    color: var(--ht-text-muted);
     cursor: pointer;
-}
-.hem-toggle-btn.is-active {
-    background: var(--background-primary);
-    font-weight: bold;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: var(--ht-transition-fast);
 }
 
-/* Contexto y estado de ánimo */
-.ht-context-row { margin-bottom: 15px; padding: 10px; background: var(--background-secondary); border-radius: 8px; }
-.ht-mood-selector { display: flex; justify-content: space-between; gap: 5px; margin-bottom: 20px; }
-.ht-mood-btn { flex: 1; font-size: 1.5em; padding: 8px 0; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: pointer; }
-.ht-mood-btn.is-selected { background: var(--interactive-accent); border-color: var(--interactive-accent); }
+.ht-type-toggle .hem-toggle-btn.is-active {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--ht-text-main);
+}
+
+.ht-goal-block {
+    padding: 16px;
+    border-radius: var(--ht-radius-xl);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed var(--ht-border);
+    margin: 8px 0;
+    animation: ht-fade-in 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ht-goal-block.is-hidden {
+    display: none !important;
+}
+
+/* Context section in entry modal */
+.ht-context-toggle {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--ht-border) !important;
+    color: var(--ht-text-muted) !important;
+    border-radius: var(--ht-radius-xl) !important;
+    padding: 10px !important;
+    font-size: 0.8rem !important;
+    cursor: pointer;
+    margin: 8px 0 !important;
+    transition: var(--ht-transition-fast);
+}
+
+.ht-context-toggle:hover {
+    border-color: var(--ht-accent) !important;
+    color: var(--ht-accent) !important;
+}
+
+/* Range buttons in analytics */
+.ham-range-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.ham-range-btn {
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid var(--ht-border);
+    background: transparent;
+    color: var(--ht-text-muted);
+    cursor: pointer;
+    transition: var(--ht-transition-fast);
+}
+
+.ham-range-btn.is-active {
+    background: var(--ht-accent);
+    color: #000;
+    border-color: var(--ht-accent);
+}
+
+.ham-range-btn:hover {
+    border-color: var(--ht-accent);
+    color: var(--ht-accent);
+}
+
+/* Analytics modal summary grid */
+.ham-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.ham-card {
+    padding: 20px;
+    border-radius: var(--ht-radius-xl);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--ht-border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ham-card-title {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
+}
+
+.ham-card-value {
+    font-family: var(--ht-font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.ham-card-sub {
+    font-size: 0.75rem;
+    color: var(--ht-text-muted);
+}
+
+.ham-section-title {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ht-text-muted);
+    margin: 16px 0 8px;
+}
+
+.ham-chart-container {
+    border-radius: var(--ht-radius-xl);
+    overflow: hidden;
+}
+
+.ham-weekday-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    margin-top: 8px;
+}
+
+.ham-weekday-table td {
+    padding: 6px 8px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.ham-progress-bg {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.ham-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s ease;
+}

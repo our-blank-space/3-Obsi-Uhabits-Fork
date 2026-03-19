@@ -79,12 +79,46 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setName("Primer día de la semana")
+			.addDropdown(d => d
+				.addOption("Mon", "Lunes")
+				.addOption("Sun", "Domingo")
+				.setValue(s.firstDayOfWeek)
+				.onChange(async v => {
+					s.firstDayOfWeek = v as any;
+					await this.storage.save();
+				}));
+
+		new Setting(containerEl)
+			.setName("Días visibles en el grid")
+			.setDesc("Cuántos días hacia atrás mostrar en la vista principal.")
+			.addText(t => t
+				.setValue(String(s.daysVisible))
+				.onChange(async v => {
+					const num = parseInt(v);
+					if (!isNaN(num) && num > 0) {
+						s.daysVisible = num;
+						await this.storage.save();
+					}
+				}));
+
+		new Setting(containerEl)
 			.setName("Ocultar completados hoy")
 			.setDesc("Limpia la vista principal ocultando lo que ya hiciste hoy.")
 			.addToggle(t => t
 				.setValue(s.autoHideCompletedToday)
 				.onChange(async v => {
 					s.autoHideCompletedToday = v;
+					await this.storage.save();
+				}));
+
+		new Setting(containerEl)
+			.setName("Confirmar al archivar")
+			.setDesc("Pide confirmación antes de mover un hábito a archivados.")
+			.addToggle(t => t
+				.setValue(s.confirmArchive)
+				.onChange(async v => {
+					s.confirmArchive = v;
 					await this.storage.save();
 				}));
 

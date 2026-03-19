@@ -28,6 +28,7 @@ export class EntryModal extends Modal {
 	// Contexto
 	private energyValue: number = 3;
 	private moodValue: string = "";
+	private showContext: boolean = false;
 
 	constructor(app: App, opts: EntryModalOptions) {
 		super(app);
@@ -47,6 +48,12 @@ export class EntryModal extends Modal {
 
 		this.energyValue = this.entry?.energy ?? 3;
 		this.moodValue = this.entry?.mood ?? "";
+		this.notes = this.entry?.notes ?? "";
+
+		// Auto-expandir si ya hay datos
+		if (this.entry?.notes || this.entry?.mood || this.entry?.energy) {
+			this.showContext = true;
+		}
 	}
 
 	onOpen(): void {
@@ -55,7 +62,10 @@ export class EntryModal extends Modal {
 		contentEl.addClass("habit-entry-modal");
 
 		contentEl.createEl("h2", { text: this.habit.name });
-		contentEl.createDiv({ cls: "ht-entry-date", text: this.date });
+		
+		const subHeader = contentEl.createDiv("ht-modal-subheader");
+		subHeader.createSpan({ cls: "ht-entry-date-label", text: "Registro para: " });
+		subHeader.createSpan({ cls: "ht-entry-date", text: this.date });
 
 		// Feedback visual
 		const ev = evalHabitEntry(this.habit, this.entry);
@@ -85,13 +95,24 @@ export class EntryModal extends Modal {
 				});
 		}
 
-		// --- Contexto ---
-		contentEl.createEl("h4", { text: "Contexto", cls: "ham-section-title" });
+		// --- Contexto (Opcional/Colapsable) ---
+		const contextToggle = contentEl.createEl("button", { 
+			text: this.showContext ? "Ocultar Detalles" : "Añadir Detalles (Ánimo/Energía)", 
+			cls: "ht-btn ht-context-toggle" 
+		});
+		
+		const contextArea = contentEl.createDiv("ht-context-area");
+		if (!this.showContext) contextArea.style.display = "none";
 
-		const energyContainer = contentEl.createDiv("ht-context-row");
+		contextToggle.onclick = () => {
+			this.showContext = !this.showContext;
+			contextArea.style.display = this.showContext ? "block" : "none";
+			contextToggle.setText(this.showContext ? "Ocultar Detalles" : "Añadir Detalles (Ánimo/Energía)");
+		};
+
+		const energyContainer = contextArea.createDiv("ht-context-row");
 		new Setting(energyContainer)
-			.setName("Nivel de Energía")
-			.setDesc("1 (Baja) - 5 (Alta)")
+			.setName("Nivel de Energía (1: Baja 🔋 → 5: Alta ⚡)")
 			.addSlider((s: SliderComponent) => s
 				.setLimits(1, 5, 1)
 				.setValue(this.energyValue)
@@ -99,8 +120,8 @@ export class EntryModal extends Modal {
 				.onChange((v: number) => this.energyValue = v)
 			);
 
-		const moodContainer = contentEl.createDiv("ht-mood-selector");
-		const moods = ["🙂", "😑", "😔"];
+		const moodContainer = contextArea.createDiv("ht-mood-selector");
+		const moods = ["😫", "😔", "😑", "🙂", "🔥"];
 		moods.forEach(m => {
 			const btn = moodContainer.createEl("button", { text: m, cls: "ht-mood-btn" });
 			if (this.moodValue === m) btn.addClass("is-selected");
@@ -112,7 +133,7 @@ export class EntryModal extends Modal {
 		});
 
 		// --- Observaciones ---
-		new Setting(contentEl).setName("Observación")
+		new Setting(contextArea).setName("Observación")
 			.addTextArea((t: TextAreaComponent) => {
 				t.setPlaceholder("Opcional...")
 					.setValue(this.notes)

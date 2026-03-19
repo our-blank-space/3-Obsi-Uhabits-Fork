@@ -17,6 +17,18 @@ main.js
 
 # obsidian
 data.json
+data/
+.obsidian/
+.trash/
+.antigravity/
+.gemini/
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
+
+# Temporary / Scratch Files
+codigo_fuente.txt
+py.py
+AGENTS.md
+*.tmp
+*.log

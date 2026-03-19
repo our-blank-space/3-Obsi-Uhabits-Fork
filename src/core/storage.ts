@@ -16,7 +16,10 @@ const DEFAULT_SETTINGS: HabitPluginSettings = {
 	autoHideCompletedToday: false,
 	soundsEnabled: false,
 	backupFolder: "Habit Backups",
-	sortMode: "manual"
+	sortMode: "manual",
+	daysVisible: 21,
+	showDailyProgress: true,
+	confirmArchive: true
 };
 
 export class HabitStorage {
@@ -87,6 +90,13 @@ export class HabitStorage {
 	async update(mutator: (d: HabitData) => void): Promise<void> {
 		mutator(this.data);
 		await this.save();
+	}
+
+	/**
+	 * Fuerza un disparo de eventos para refrescar la UI
+	 */
+	refresh() {
+		this.events.trigger("changed", this.data);
 	}
 
 	private getEmptyData(): HabitData {
