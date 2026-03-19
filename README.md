@@ -2,6 +2,20 @@
 
 **Habit Loop Tracker** es un plugin premium para [Obsidian](https://obsidian.md) diseñado para construir consistencia a largo plazo. Basado en el algoritmo de **puntuación exponencial**, este plugin te permite fallar sin perder tu progreso, enfocándose en la "fuerza" del hábito en lugar de simples rachas.
 
+## 📺 Vista Previa
+
+| **Dashboard Global** | **Creación de Hábitos** |
+|:---:|:---:|
+| ![Dashboard Global](Resources/dashboard_global.png) | ![Crear Hábito](Resources/create_habit.png) |
+
+| **Analíticas Avanzadas** | **Tendencias y Contexto** |
+|:---:|:---:|
+| ![Analíticas Top](Resources/analytics_top.png) | ![Analíticas Bottom](Resources/analytics_bottom.png) |
+
+> [!TIP]
+> **Explora el Plugin**: Mira el video de demostración para ver el flujo completo de registro y analíticas.
+> ![Video Demo](Resources/demo.webm)
+
 ---
 
 ## ✨ Características Principales
