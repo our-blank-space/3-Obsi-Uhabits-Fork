@@ -3,7 +3,7 @@ import { HabitStorage } from "../../core/storage";
 import { Habit, HabitEntry, HabitEntries } from "../../core/types";
 import { evalHabitOnDateWithEntries, setEntry, deleteEntry } from "../../core/entries";
 import { sortHabits, reorderHabits, deleteHabit, archiveHabit } from "../../core/habits";
-import { todayString, addDays, weekdayShort, weekdaySpanish, getISOWeek, getISOYear } from "../../utils/dates";
+import { todayString, addDays, weekdayShort, getISOWeek, getISOYear } from "../../utils/dates";
 import { t, getWeekdays } from "../../i18n";
 
 import { CreateHabitModal } from "../modals/CreateHabitModal";
@@ -351,7 +351,7 @@ export class HomeView extends ItemView {
         const infoDiv = meta.createDiv({ cls: "ht-habit-info" });
         const nameText = habit.icon ? `${habit.icon} ${habit.name}` : habit.name;
         infoDiv.createSpan({ cls: "ht-habit-name-text", text: nameText });
-        infoDiv.createSpan({ cls: "ht-habit-category", text: habit.category || (lang === "es" ? "Sin categoría" : "No category") });
+        infoDiv.createSpan({ cls: "ht-habit-category", text: habit.category || t("no-category", lang) });
 
         meta.ondragover = (e) => { e.preventDefault(); };
         meta.ondrop = async (e) => {
@@ -513,8 +513,14 @@ export class HomeView extends ItemView {
 
         await this.preLoadVisibleData();
 
+        const hDate = t("table-header-date", lang);
+        const hHabit = t("table-header-habit", lang);
+        const hValue = t("table-header-value", lang);
+        const hMood = t("table-header-mood", lang);
+        const hNotes = t("table-header-notes", lang);
+
         const mdHeader = [
-            `| ${t("habit", lang)} | 0..1 | Value | Mood | Obs |`,
+            `| ${hDate} | ${hHabit} | ${hValue} | ${hMood} | ${hNotes} |`,
             "|---|---|---|---|---|"
         ];
         const mdRows: string[] = [];
@@ -579,10 +585,10 @@ export class HomeView extends ItemView {
 
         const tableContent = mdRows.length > 0
             ? [...mdHeader, ...mdRows].join("\n")
-            : mdHeader.join("\n") + "\n_(Sin registros)_";
+            : mdHeader.join("\n") + `\n_(${t("no-entries", lang)})_`;
 
         const content = frontmatter + summary + tableContent;
-        const filename = `Log_Habitos_${year}-${month}.md`;
+        const filename = `${t("log-filename", lang)}_${year}-${month}.md`;
         const filePath = folder + "/" + filename;
 
         try {

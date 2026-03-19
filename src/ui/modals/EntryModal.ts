@@ -199,7 +199,7 @@ export class EntryModal extends Modal {
         };
 
         // Actualizar/Crear Log Mensual
-        const notePath = await createHabitNote(this.app, noteSettings, this.habit, this.date, String(val), this.notes, this.moodValue);
+        const notePath = await createHabitNote(this.app, noteSettings, this.habit, this.date, String(val), this.notes, this.moodValue, this.lang);
 
         await setEntry(this.storage, this.habit.id, this.date, val, notePath, {
             energy: this.energyValue,

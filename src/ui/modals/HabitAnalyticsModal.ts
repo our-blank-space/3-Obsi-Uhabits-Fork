@@ -245,7 +245,7 @@ export class HabitAnalyticsModal extends Modal {
 			}
 
 			// --- CHART 2: BAR HISTORY ---
-			const histData = buildHistorySeries(this.habit, entries, this.currentRange);
+			const histData = buildHistorySeries(this.habit, entries, this.currentRange, lang);
 			const ctxHist = histCanvas.getContext("2d");
 			if (ctxHist) {
 				this.charts.push(new Chart(ctxHist, {

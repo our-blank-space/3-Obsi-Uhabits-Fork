@@ -1,6 +1,6 @@
 import { App, TFile, normalizePath, Notice } from "obsidian";
 import { Habit } from "../core/types";
-import { weekdaySpanish } from "./dates";
+import { t, getWeekdays } from "../i18n";
 
 export interface NoteSettings {
 	folder: string;
@@ -26,14 +26,19 @@ export async function createMonthlyHabitLog(
 	dateStr: string,
 	valueText: string,
 	mood: string,
-	userNotes: string
+	userNotes: string,
+    lang: any
 ): Promise<string> {
 	const baseFolder = await ensureFolder(app, folder);
 	const [year, month] = dateStr.split("-");
-	const filename = `Log_Habitos_${year}-${month}.md`;
+    const filenamePrefix = t("log-filename", lang);
+	const filename = `${filenamePrefix}_${year}-${month}.md`;
 	const path = normalizePath(`${baseFolder}/${filename}`);
 
-	const dayName = weekdaySpanish(dateStr).slice(0, 3);
+    const dateObj = new Date(dateStr + "T00:00:00");
+    const dayOfWeek = dateObj.getDay(); // 0 is Sunday
+    const dayNames = getWeekdays(lang);
+	const dayName = dayNames[dayOfWeek].slice(0, 3);
 	const dateWithDay = `${dateStr} (${dayName})`;
 
 	// Mapeo binario / cuantitativo
@@ -74,13 +79,17 @@ export async function createMonthlyHabitLog(
 		if (!found) newLines.push(newRow);
 		content = newLines.join("\n");
 	} else {
+        const hDate = t("table-header-date", lang);
+        const hHabit = t("table-header-habit", lang);
+        const hValue = t("table-header-value", lang);
+        const hMood = t("table-header-mood", lang);
+        const hNotes = t("table-header-notes", lang);
 		content = `---
-type: 97-Log
+type: habit-log
 tags: [system/habit-log]
 month: ${year}-${month}
-status: [🟢]
 ---
-| Fecha / Día | Hábito (Cualitativo/Binario) | Valor (Cuantitativo) | Estado de Ánimo | Observaciones |
+| ${hDate} | ${hHabit} | ${hValue} | ${hMood} | ${hNotes} |
 |---|---|---|---|---|
 ${newRow}`;
 	}
@@ -93,7 +102,7 @@ ${newRow}`;
 		}
 	} catch (e) {
 		console.error(e);
-		new Notice("Error actualizando Log Mensual.");
+		new Notice(t("error-updating-log", lang));
 		throw e;
 	}
 
@@ -107,7 +116,8 @@ export async function createHabitNote(
 	dateStr: string,
 	valueText: string,
 	userNotes: string,
-	mood: string = "🙂"
+	mood: string = "🙂",
+    lang: any = "auto"
 ): Promise<string> {
-	return await createMonthlyHabitLog(app, settings.folder, habit, dateStr, valueText, mood, userNotes);
+	return await createMonthlyHabitLog(app, settings.folder, habit, dateStr, valueText, mood, userNotes, lang);
 }

@@ -130,6 +130,15 @@ export const translations = {
         "edit-habit": "Edit Habit",
         "habit-updated": "Habit updated.",
         "habit-update-error": "Error updating habit.",
+        "month-labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+        "log-filename": "Habit_Log",
+        "table-header-date": "Date / Day",
+        "table-header-habit": "Habit (Binary)",
+        "table-header-value": "Value (Quant)",
+        "table-header-mood": "Mood",
+        "table-header-notes": "Notes",
+        "error-updating-log": "Error updating Monthly Log.",
+        "no-entries": "No entries found.",
         "energy-1": "Very Low",
         "energy-2": "Low",
         "energy-3": "Medium",
@@ -275,6 +284,15 @@ export const translations = {
         "edit-habit": "Editar Hábito",
         "habit-updated": "Hábito actualizado.",
         "habit-update-error": "Error al actualizar el hábito.",
+        "month-labels": ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+        "log-filename": "Log_Habitos",
+        "table-header-date": "Fecha / Día",
+        "table-header-habit": "Hábito (Binario)",
+        "table-header-value": "Valor (Cuant)",
+        "table-header-mood": "Ánimo",
+        "table-header-notes": "Notas",
+        "error-updating-log": "Error actualizando Log Mensual.",
+        "no-entries": "Sin registros",
         "energy-1": "Muy Baja",
         "energy-2": "Baja",
         "energy-3": "Media",
@@ -299,7 +317,9 @@ export function t(key: keyof typeof translations.en, lang: "auto" | "en" | "es" 
     } else {
         targetLang = lang as "en" | "es";
     }
-    return (translations[targetLang] as Record<string, string | string[]>)[key] as string || (translations.en as Record<string, string | string[]>)[key] as string || key;
+    const dict = (translations[targetLang] as Record<string, string | string[]>);
+    const enDict = (translations.en as Record<string, string | string[]>);
+    return dict[key] as string || enDict[key] as string || key;
 }
 
 export function getWeekdays(lang: "auto" | "en" | "es" = "auto"): string[] {

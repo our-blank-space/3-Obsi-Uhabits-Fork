@@ -38,12 +38,6 @@ export function weekdayShort(dateStr: string, firstDayOfWeek: "Mon" | "Sun" = "M
 	return names[day];
 }
 
-export function weekdaySpanish(dateStr: string): string {
-	const d = toDateOnly(dateStr);
-	const day = d.getDay();
-	const names = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
-	return names[day];
-}
 
 export function getISOWeek(dateStr: string): number {
 	const date = toDateOnly(dateStr);

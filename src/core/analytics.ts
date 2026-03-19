@@ -3,6 +3,8 @@ import { evalHabitOnDateWithEntries } from "./entries";
 import { todayString, addDays, compareDateStr, getRangeBounds, weekdayShort } from "../utils/dates";
 import { HabitStorage } from "./storage";
 
+import { t } from "../i18n";
+
 export interface LineSeries { labels: string[]; values: number[]; }
 export interface RangeStats { ok: number; total: number; percent: number; }
 export interface TrendSummary { monthDelta: number; yearDelta: number; monthCurrent: number; yearCurrent: number; }
@@ -129,7 +131,7 @@ export function buildScoreSeries(habit: Habit, entries: HabitEntries, mode: "wee
     return { labels, values };
 }
 
-export function buildHistorySeries(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year" | "all"): LineSeries {
+export function buildHistorySeries(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year" | "all", lang: any = "auto"): LineSeries {
     const { from, to } = getRangeBounds(mode);
     const labels: string[] = []; const values: number[] = [];
 
@@ -143,7 +145,7 @@ export function buildHistorySeries(habit: Habit, entries: HabitEntries, mode: "w
     } else {
         const monthMap = new Map<string, number>();
         const countMap = new Map<string, number>();
-        const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+        const months = t("month-labels", lang) as unknown as string[];
 
         for (let d = from; compareDateStr(d, to) <= 0; d = addDays(d, 1)) {
             const mIdx = parseInt(d.split('-')[1]) - 1;
