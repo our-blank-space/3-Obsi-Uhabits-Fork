@@ -62,7 +62,7 @@ export function getISOYear(dateStr: string): number {
 	return d.getUTCFullYear();
 }
 
-export function getRangeBounds(mode: "week" | "month" | "year"): { from: string; to: string } {
+export function getRangeBounds(mode: "week" | "month" | "year" | "all"): { from: string; to: string } {
 	const today = todayString();
 	let from = today;
 
@@ -70,8 +70,13 @@ export function getRangeBounds(mode: "week" | "month" | "year"): { from: string;
 		from = addDays(today, -6);
 	} else if (mode === "month") {
 		from = addDays(today, -29);
-	} else {
+	} else if (mode === "year") {
 		from = addDays(today, -364);
+	} else {
+		// "all" - usamos una fecha muy antigua como fallback, 
+		// aunque lo ideal es que el llamador maneje el undefined si quiere TODO.
+		// Pero para mantener compatibilidad con LineSeries:
+		from = "2000-01-01"; 
 	}
 
 	return { from, to: today };

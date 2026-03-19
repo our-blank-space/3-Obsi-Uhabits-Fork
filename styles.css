@@ -729,14 +729,22 @@
 
 /* Analytics Elements */
 .habit-analytics-modal .ham-card {
-    padding: 24px;
+    padding: 24px !important;
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--ht-border);
     transition: var(--ht-transition-fast);
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    align-items: center;
     gap: 4px;
+    position: relative;
+    min-height: 168px;
+    height: auto;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: visible !important;
 }
 
 .habit-analytics-modal .ham-section-title {
@@ -1466,7 +1474,7 @@
 /* Analytics modal summary grid */
 .ham-summary-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 12px;
     margin-bottom: 20px;
 }

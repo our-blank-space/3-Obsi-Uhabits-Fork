@@ -115,7 +115,7 @@ export function buildHeatmapData(habit: Habit, entries: HabitEntries): HeatmapDa
     return map;
 }
 
-export function buildScoreSeries(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year"): LineSeries {
+export function buildScoreSeries(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year" | "all"): LineSeries {
     const timeline = computeScoreTimeline(habit, entries);
     const { from, to } = getRangeBounds(mode);
     const labels: string[] = []; const values: number[] = [];
@@ -129,7 +129,7 @@ export function buildScoreSeries(habit: Habit, entries: HabitEntries, mode: "wee
     return { labels, values };
 }
 
-export function buildHistorySeries(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year"): LineSeries {
+export function buildHistorySeries(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year" | "all"): LineSeries {
     const { from, to } = getRangeBounds(mode);
     const labels: string[] = []; const values: number[] = [];
 
@@ -226,14 +226,15 @@ export async function getWeekdayStatsForHabit(storage: HabitStorage, habitId: st
     return stats;
 }
 
-export async function getMoodDistribution(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year"): Promise<MoodStats> {
-    const { from, to } = getRangeBounds(mode);
+export async function getMoodDistribution(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year" | "all"): Promise<MoodStats> {
+    const { from, to } = mode === "all" ? { from: undefined, to: undefined } : getRangeBounds(mode);
     const counts: Record<string, number> = {
-        "🙂": 0, "😑": 0, "😔": 0
+        "😫": 0, "😔": 0, "😑": 0, "🙂": 0, "🔥": 0
     };
 
     for (const date in entries.entries) {
-        if (compareDateStr(date, from) >= 0 && compareDateStr(date, to) <= 0) {
+        const inRange = !from || !to || (compareDateStr(date, from) >= 0 && compareDateStr(date, to) <= 0);
+        if (inRange) {
             const entry = entries.entries[date];
             if (entry.mood && counts.hasOwnProperty(entry.mood)) {
                 counts[entry.mood]++;
@@ -243,7 +244,7 @@ export async function getMoodDistribution(habit: Habit, entries: HabitEntries, m
 
     const labels: string[] = [];
     const data: number[] = [];
-    const order = ["🙂", "😑", "😔"];
+    const order = ["😫", "😔", "😑", "🙂", "🔥"];
 
     order.forEach(mood => {
         if (counts[mood] > 0) {
@@ -255,13 +256,14 @@ export async function getMoodDistribution(habit: Habit, entries: HabitEntries, m
     return { labels, data };
 }
 
-export function getAverageEnergy(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year"): string {
-    const { from, to } = getRangeBounds(mode);
+export function getAverageEnergy(habit: Habit, entries: HabitEntries, mode: "week" | "month" | "year" | "all"): string {
+    const { from, to } = mode === "all" ? { from: undefined, to: undefined } : getRangeBounds(mode);
     let total = 0;
     let count = 0;
 
     for (const date in entries.entries) {
-        if (compareDateStr(date, from) >= 0 && compareDateStr(date, to) <= 0) {
+        const inRange = !from || !to || (compareDateStr(date, from) >= 0 && compareDateStr(date, to) <= 0);
+        if (inRange) {
             const entry = entries.entries[date];
             if (entry.energy) {
                 total += entry.energy;

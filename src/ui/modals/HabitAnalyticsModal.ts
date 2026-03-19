@@ -18,7 +18,7 @@ interface AnalyticsProps {
 	habit: Habit;
 }
 
-type TimeRange = "week" | "month" | "year";
+type TimeRange = "week" | "month" | "year" | "all";
 
 export class HabitAnalyticsModal extends Modal {
 	private storage: HabitStorage;
@@ -56,6 +56,7 @@ export class HabitAnalyticsModal extends Modal {
 		this.createRangeBtn(rangeControls, "week", "7D");
 		this.createRangeBtn(rangeControls, "month", "30D");
 		this.createRangeBtn(rangeControls, "year", "1A");
+		this.createRangeBtn(rangeControls, "all", "TODO");
 
 		// --- METRICS GRID ---
 		const grid = contentEl.createDiv("ham-summary-grid");
@@ -131,7 +132,7 @@ export class HabitAnalyticsModal extends Modal {
 		// Tarjeta Gráfico Mood (Donut)
 		const moodCard = contextGrid.createDiv("ham-card");
 		moodCard.style.position = "relative";
-		moodCard.style.height = "160px"; // Altura fija para el donut
+		moodCard.style.height = "220px"; // Más altura para legend abajo
 		moodCard.style.display = "flex";
 		moodCard.style.alignItems = "center";
 		moodCard.style.justifyContent = "center";
@@ -162,11 +163,11 @@ export class HabitAnalyticsModal extends Modal {
 			if (ctxMood && moodData.data.length > 0) {
 				// Mapeo de colores para emojis
 				const moodColors: Record<string, string> = {
-					"😫": "#ef5350", // Rojo
-					"😐": "#bdbdbd", // Gris
-					"🙂": "#66bb6a", // Verde
-					"😄": "#42a5f5", // Azul
-					"🔥": "#ffca28"  // Ambar/Fuego
+					"😫": "#ef5350", // Agotado / Rojo
+					"😔": "#ffa726", // Triste / Naranja
+					"😑": "#bdbdbd", // Neutro / Gris
+					"🙂": "#66bb6a", // Bien / Verde
+					"🔥": "#ffca28"  // Genial / Ambar
 				};
 
 				const bgColors = moodData.labels.map(l => moodColors[l] || "#999");
@@ -186,9 +187,17 @@ export class HabitAnalyticsModal extends Modal {
 						responsive: true,
 						maintainAspectRatio: false,
 						plugins: {
-							legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
+							legend: { 
+								position: 'bottom', 
+								labels: { 
+									boxWidth: 12, 
+									font: { size: 14, family: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' },
+									padding: 8,
+									usePointStyle: false
+								} 
+							}
 						},
-						layout: { padding: 10 }
+						layout: { padding: { left: 10, right: 10, top: 8, bottom: 0 } }
 					}
 				}));
 			} else if (moodData.data.length === 0) {
