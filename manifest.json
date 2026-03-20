@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-habit-loop",
 	"name": "Habit Loop Tracker",
-	"version": "1.5.3",
+	"version": "1.5.4",
 	"minAppVersion": "1.5.1",
 	"description": "Tracker de hábitos avanzado estilo 'Loop'. Incluye algoritmo de puntuación (Score), registro de ánimo y energía, gráficos visuales (Chart.js) e integración con notas diarias.",
 	"author": "Andres Vega",
