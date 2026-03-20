@@ -191,5 +191,26 @@ export class HabitSettingsTab extends PluginSettingTab {
                     await this.storage.repairData();
                     new Notice("Reparación completada.");
                 }));
+
+		// --- SECCIÓN: SOPORTE ---
+		new Setting(containerEl).setHeading().setName("Soporte y Enlaces");
+
+		new Setting(containerEl)
+			.setName("Repositorio de GitHub")
+			.setDesc("Ver el código fuente, reportar errores o descargar nuevas versiones beta.")
+			.addButton(b => b
+				.setButtonText("Abrir GitHub")
+				.onClick(() => {
+					window.open("https://github.com/our-blank-space/3-Obsi-Uhabits-Fork");
+				}));
+
+		new Setting(containerEl)
+			.setName("Guía de Uso (README)")
+			.setDesc("Consulta el manual detallado y los créditos del proyecto.")
+			.addButton(b => b
+				.setButtonText("Ver README")
+				.onClick(() => {
+					window.open("https://github.com/our-blank-space/3-Obsi-Uhabits-Fork/blob/main/README.md");
+				}));
 	}
 }
