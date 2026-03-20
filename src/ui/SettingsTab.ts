@@ -1,12 +1,10 @@
 import { App, Plugin, PluginSettingTab, Setting, Notice } from "obsidian";
-// CORRECCIÓN: Nombre correcto de la clase de almacenamiento
 import { HabitStorage } from "../core/storage";
 import { generateMonthlyReport } from "../utils/reports";
-// CORRECCIÓN: Nombres correctos de las funciones exportadas en backup.ts
 import { exportJsonBackup, exportCsv, importJsonBackup } from "../utils/backup";
+import { t } from "../i18n";
 
 export class HabitSettingsTab extends PluginSettingTab {
-    // CORRECCIÓN: Tipo correcto
 	storage: HabitStorage;
 
 	constructor(app: App, plugin: Plugin, storage: HabitStorage) {
@@ -21,15 +19,15 @@ export class HabitSettingsTab extends PluginSettingTab {
 		const data = this.storage.getData();
 		const s = data.settingsSnapshot;
 
-		containerEl.createEl("h2", { text: "Habit Loop – Configuración" });
+		containerEl.createEl("h2", { text: t("settings-title") });
 
 		// --- SECCIÓN: NOTAS ---
-		new Setting(containerEl).setHeading().setName("Notas y Registros");
+		new Setting(containerEl).setHeading().setName(t("settings-notes-heading"));
 
 		new Setting(containerEl)
-			.setName("Carpeta de notas")
-			.setDesc("Donde se guardarán las notas individuales de cada registro.")
-			.addText(t => t
+			.setName(t("settings-notes-folder"))
+			.setDesc(t("settings-notes-desc"))
+			.addText(text => text
 				.setValue(s.notesFolder)
 				.onChange(async v => {
 					s.notesFolder = v;
@@ -37,9 +35,9 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName("Plantilla de nota")
-			.setDesc("Variables disponibles: {{habit}}, {{date:YYYY-MM-DD}}, {{value}}, {{notes}}")
-			.addTextArea(t => t
+			.setName(t("settings-template"))
+			.setDesc(t("settings-template-desc"))
+			.addTextArea(area => area
 				.setValue(s.noteTemplate)
 				.onChange(async v => {
 					s.noteTemplate = v;
@@ -47,8 +45,8 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName("Abrir nota al crear")
-			.addToggle(t => t
+			.setName(t("settings-open-note"))
+			.addToggle(toggle => toggle
 				.setValue(s.openNoteAfterCreate)
 				.onChange(async v => {
 					s.openNoteAfterCreate = v;
@@ -56,8 +54,8 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
         
         new Setting(containerEl)
-            .setName("Preguntar antes de crear")
-            .addToggle(t => t
+            .setName(t("settings-ask-create"))
+            .addToggle(toggle => toggle
                 .setValue(s.askBeforeCreateNote)
                 .onChange(async v => {
                     s.askBeforeCreateNote = v;
@@ -65,13 +63,14 @@ export class HabitSettingsTab extends PluginSettingTab {
                 }));
 
 		// --- SECCIÓN: INTERFAZ ---
-		new Setting(containerEl).setHeading().setName("Interfaz");
+		new Setting(containerEl).setHeading().setName(t("settings-interface-heading"));
 
 		new Setting(containerEl)
-			.setName("Orientación de la barra de días")
+			.setName(t("settings-orientation"))
+			.setDesc(t("settings-orientation-desc"))
 			.addDropdown(d => d
-				.addOption("recent-right", "Recientes a la derecha (→)")
-				.addOption("recent-left", "Recientes a la izquierda (←)")
+				.addOption("recent-right", t("settings-orient-right"))
+				.addOption("recent-left", t("settings-orient-left"))
 				.setValue(s.dayBarOrientation)
 				.onChange(async v => {
 					s.dayBarOrientation = v as any;
@@ -79,10 +78,10 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName("Primer día de la semana")
+			.setName(t("settings-first-day"))
 			.addDropdown(d => d
-				.addOption("Mon", "Lunes")
-				.addOption("Sun", "Domingo")
+				.addOption("Mon", t("weekdays")[1])
+				.addOption("Sun", t("weekdays")[0])
 				.setValue(s.firstDayOfWeek)
 				.onChange(async v => {
 					s.firstDayOfWeek = v as any;
@@ -90,9 +89,9 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName("Días visibles en el grid")
-			.setDesc("Cuántos días hacia atrás mostrar en la vista principal.")
-			.addText(t => t
+			.setName(t("settings-days-visible"))
+			.setDesc(t("settings-days-visible-desc"))
+			.addText(text => text
 				.setValue(String(s.daysVisible))
 				.onChange(async v => {
 					const num = parseInt(v);
@@ -103,9 +102,9 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName("Ocultar completados hoy")
-			.setDesc("Limpia la vista principal ocultando lo que ya hiciste hoy.")
-			.addToggle(t => t
+			.setName(t("settings-hide-completed"))
+			.setDesc(t("settings-hide-completed")) // Utiliza la misma frase para descripción si no hay específica
+			.addToggle(toggle => toggle
 				.setValue(s.autoHideCompletedToday)
 				.onChange(async v => {
 					s.autoHideCompletedToday = v;
@@ -113,9 +112,9 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName("Confirmar al archivar")
-			.setDesc("Pide confirmación antes de mover un hábito a archivados.")
-			.addToggle(t => t
+			.setName(t("settings-confirm-archive"))
+			.setDesc(t("settings-confirm-archive-desc"))
+			.addToggle(toggle => toggle
 				.setValue(s.confirmArchive)
 				.onChange(async v => {
 					s.confirmArchive = v;
@@ -123,11 +122,11 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
 
 		// --- SECCIÓN: DATOS & BACKUP ---
-		new Setting(containerEl).setHeading().setName("Datos y Mantenimiento");
+		new Setting(containerEl).setHeading().setName(t("settings-data-heading"));
 
 		new Setting(containerEl)
-			.setName("Carpeta de Backups")
-			.addText(t => t
+			.setName(t("settings-backup-folder"))
+			.addText(text => text
 				.setValue(s.backupFolder)
 				.onChange(async v => {
 					s.backupFolder = v;
@@ -135,82 +134,82 @@ export class HabitSettingsTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName("Exportar")
-			.setDesc("Genera archivos en tu bóveda.")
+			.setName(t("settings-export"))
+			.setDesc(t("settings-export-desc"))
 			.addButton(b => b
-				.setButtonText("JSON Backup")
+				.setButtonText(t("settings-export-json"))
 				.onClick(async () => {
 					const p = await exportJsonBackup(this.app, this.storage);
-					new Notice(`Backup creado: ${p}`);
+					new Notice(`${t("export-success")}: ${p}`);
 				}))
 			.addButton(b => b
-				.setButtonText("CSV Logs")
+				.setButtonText(t("settings-export-csv"))
 				.onClick(async () => {
 					const p = await exportCsv(this.app, this.storage);
-					new Notice(`CSV creado: ${p}`);
+					new Notice(`${t("export-success")}: ${p}`);
 				}));
 
         new Setting(containerEl)
-            .setName("Generar Reporte Mensual")
-            .setDesc("Crea un resumen Markdown del mes actual.")
+            .setName(t("settings-report"))
+            .setDesc(t("settings-report-desc"))
             .addButton(b => b
-                .setButtonText("Generar Reporte")
+                .setButtonText(t("settings-report"))
                 .onClick(async () => {
                     const p = await generateMonthlyReport(this.app, this.storage);
-                    new Notice(`Reporte: ${p}`);
+                    new Notice(`${t("export-success")}: ${p}`);
                 }));
 
 		// Importación
 		let importPath = "";
 		new Setting(containerEl)
-			.setName("Importar JSON")
-			.setDesc("⚠️ Sobrescribe todos los datos actuales.")
-			.addText(t => t
-				.setPlaceholder("Ruta/al/backup.json")
+			.setName(t("settings-import"))
+			.setDesc(t("settings-import-warn"))
+			.addText(text => text
+				.setPlaceholder(t("settings-import-desc"))
 				.onChange(v => importPath = v))
 			.addButton(b => b
-				.setButtonText("Restaurar")
+				.setButtonText(t("settings-import"))
 				.setWarning()
 				.onClick(async () => {
-					if(!importPath) return new Notice("Define la ruta del archivo.");
+					if(!importPath) return new Notice(t("settings-import-desc"));
 					try {
 						await importJsonBackup(this.app, this.storage, importPath);
-						new Notice("Datos restaurados correctamente.");
+						new Notice(t("save-success"));
 					} catch(e) {
-						new Notice("Error al importar. Verifica la ruta.");
+						new Notice(t("save-error"));
 						console.error(e);
 					}
 				}));
                 
         new Setting(containerEl)
-            .setName("Reparar Base de Datos")
-            .setDesc("Intenta arreglar inconsistencias en data.json.")
+            .setName(t("settings-repair"))
+            .setDesc(t("settings-repair-desc"))
             .addButton(b => b
-                .setButtonText("Reparar")
+                .setButtonText(t("settings-repair"))
                 .onClick(async () => {
                     await this.storage.repairData();
-                    new Notice("Reparación completada.");
+                    new Notice(t("save-success"));
                 }));
 
 		// --- SECCIÓN: SOPORTE ---
-		new Setting(containerEl).setHeading().setName("Soporte y Enlaces");
+		new Setting(containerEl).setHeading().setName(t("settings-support-heading"));
 
 		new Setting(containerEl)
-			.setName("Repositorio de GitHub")
-			.setDesc("Ver el código fuente, reportar errores o descargar nuevas versiones beta.")
+			.setName(t("settings-support-repo"))
+			.setDesc(t("settings-support-repo-desc"))
 			.addButton(b => b
-				.setButtonText("Abrir GitHub")
+				.setButtonText(t("open-github"))
 				.onClick(() => {
 					window.open("https://github.com/our-blank-space/3-Obsi-Uhabits-Fork");
 				}));
 
 		new Setting(containerEl)
-			.setName("Guía de Uso (README)")
-			.setDesc("Consulta el manual detallado y los créditos del proyecto.")
+			.setName(t("settings-support-readme"))
+			.setDesc(t("settings-support-readme-desc"))
 			.addButton(b => b
-				.setButtonText("Ver README")
+				.setButtonText(t("view-readme"))
 				.onClick(() => {
 					window.open("https://github.com/our-blank-space/3-Obsi-Uhabits-Fork/blob/main/README.md");
 				}));
 	}
-}
+}
