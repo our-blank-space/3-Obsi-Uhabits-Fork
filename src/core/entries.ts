@@ -1,6 +1,6 @@
 import { HabitStorage } from "./storage";
 import { Habit, HabitEntry, HabitEval, HabitEntries } from "./types";
-import { todayString, toDateOnly } from "../utils/dates";
+import { todayString, toDateOnly, getStartOfISOWeek, addDays } from "../utils/dates";
 
 /* ============================================
    Evaluación de entradas (sin cambios)
@@ -38,7 +38,8 @@ export function evalHabitEntry(habit: Habit, entry?: HabitEntry): HabitEval {
 export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: HabitEntries): HabitEval {
     const entry = entries.entries[date];
     const basic = evalHabitEntry(habit, entry);
-    if (basic !== "NONE") return basic;
+    // Si ya está completado ("OK"), lo mostramos siempre.
+    if (basic === "OK") return "OK";
 
     // --- LÓGICA DE FRECUENCIA ---
     // Evaluamos primero la frecuencia para rechazar días en los que el hábito no aplica.
@@ -84,11 +85,28 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
             const weeksSince = Math.floor(Math.round(diff / 86400000) / 7);
             if (Math.abs(weeksSince) % freq.interval !== 0) return "OFF";
         }
-    } else if (freq.days && freq.days.length > 0) {
-        // Fallback para otros modos con días específicos
-        const dObj = toDateOnly(date);
-        const day = dObj.getDay();
-        if (!freq.days.includes(day)) return "OFF";
+    }
+
+    let completedInWeek = 0;
+    const isDPW = freq.mode === "weekly" && !!(freq.daysPerWeek && freq.daysPerWeek > 0);
+    const startOfWeek = getStartOfISOWeek(date);
+
+    if (isDPW) {
+        for (let i = 0; i < 7; i++) {
+            const dStr = addDays(startOfWeek, i);
+            const e = entries.entries[dStr];
+            if (e && (e.value === "✔" || (typeof e.value === "number" && e.value > 0))) {
+                completedInWeek++;
+            }
+        }
+        
+        if (isDPW && freq.daysPerWeek !== undefined && completedInWeek >= freq.daysPerWeek) {
+            // Si ya se alcanzó la meta semanal y este día no tiene registro "OK", se bloquea.
+            const currentEntry = entries.entries[date];
+            if (!currentEntry || (currentEntry.value !== "✔" && !(typeof currentEntry.value === "number" && currentEntry.value > 0))) {
+                return "OFF"; // Esto muestra la x sutil
+            }
+        }
     }
 
     const today = todayString();
@@ -102,6 +120,38 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
     if (created && date < created && created <= today) return "OFF";
 
     if (date < today) {
+        const currentEntry = entries.entries[date];
+        if (currentEntry && (currentEntry.value === "✔" || (typeof currentEntry.value === "number" && currentEntry.value > 0))) {
+            return "OK";
+        }
+
+        // Si es una meta semanal (DPW), verificamos si aún se podía cumplir la meta en esa semana
+        if (isDPW && freq.daysPerWeek !== undefined) {
+            const endOfWeek = addDays(startOfWeek, 6);
+            if (endOfWeek < today) {
+                // Semana pasada completamente: si no se cumplió la meta, mostramos fallo SOLO el Domingo
+                if (completedInWeek < freq.daysPerWeek) {
+                    const dObj = toDateOnly(date);
+                    if (dObj.getDay() === 0) return "NO"; // Domingo
+                    return "OFF";
+                }
+                return "NONE"; 
+            } else {
+                // Semana actual: si no se ha cumplido la meta, el día pasado no es un fallo todavía
+                // SIEMPRE QUE aún haya días suficientes en el resto de la semana (desde hoy en adelante)
+                let remainingDaysInWeek = 0;
+                for (let i = 0; i < 7; i++) {
+                    const dStr = addDays(startOfWeek, i);
+                    if (dStr >= today) remainingDaysInWeek++;
+                }
+
+                if (completedInWeek + remainingDaysInWeek >= freq.daysPerWeek) {
+                    return "NONE"; // Se ve vacío/limpio
+                } else {
+                    return "NO"; // Ya es imposible cumplir la meta, mostrar fallo
+                }
+            }
+        }
         return "NO";
     }
 

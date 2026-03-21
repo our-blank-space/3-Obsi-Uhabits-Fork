@@ -3,6 +3,7 @@ import { HabitStorage } from "../../core/storage";
 import { Habit, HabitEntry } from "../../core/types";
 import { setEntry, deleteEntry, evalHabitEntry } from "../../core/entries";
 import { createHabitNote, NoteSettings } from "../../utils/notes";
+import { todayString, addDays } from "../../utils/dates";
 import { t } from "../../i18n";
 
 interface EntryModalOptions {
@@ -71,7 +72,15 @@ export class EntryModal extends Modal {
 		
 		const subHeader = contentEl.createDiv("ht-modal-subheader");
 		subHeader.createSpan({ cls: "ht-entry-date-label", text: t("entry-for", lang) });
-		subHeader.createSpan({ cls: "ht-entry-date", text: this.date });
+        
+        // Expert UX: Relative Date Label
+        const today = todayString();
+        const yesterday = addDays(today, -1);
+        let dateLabel = this.date;
+        if (this.date === today) dateLabel = `${t("today", lang)} (${this.date})`;
+        else if (this.date === yesterday) dateLabel = `Ayer (${this.date})`; // We could add i18n for 'Yesterday'
+
+		subHeader.createSpan({ cls: "ht-entry-date", text: dateLabel });
 
 		// Feedback visual
 		const ev = evalHabitEntry(this.habit, this.entry);

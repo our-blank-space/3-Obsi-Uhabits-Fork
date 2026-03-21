@@ -44,7 +44,6 @@ export class HomeView extends ItemView {
         this.render();
 
         const handler = async () => {
-            console.log("Habit Tracker: Refreshing view...");
             await this.preLoadVisibleData();
             this.render();
         };
@@ -214,7 +213,7 @@ export class HomeView extends ItemView {
         
         // Sticky Left Corner
         const leftHeader = tableHeader.createDiv("ht-left-header");
-        leftHeader.style.width = `${this.leftColWidth}px`;
+        leftHeader.style.width = "var(--ht-left-col-width)";
         leftHeader.setText(t("habit", lang));
 
         // Resizer (Between Header Corner and Days)
@@ -230,7 +229,10 @@ export class HomeView extends ItemView {
             const dayIdx = d.getDay();
             cell.createDiv("ht-day-weekday").setText(weekdayNames[dayIdx]);
             cell.createDiv("ht-day-date").setText(date.slice(5));
-            if (date === today) cell.addClass("is-today");
+            if (date === today) {
+                cell.addClass("is-today");
+                cell.setAttr("id", "ht-today-marker"); // Aid for highlighting
+            }
         });
 
         // Body (Vertical Scroll)
@@ -240,7 +242,7 @@ export class HomeView extends ItemView {
             tableBody.createDiv({ cls: "ht-empty", text: t("no-habits", lang) });
         } else {
             habits.forEach(habit => {
-                this.renderUnifiedRow(tableBody, habit, dates, settings.sortMode);
+                this.renderUnifiedRow(tableBody, habit, dates, settings.sortMode, today);
             });
         }
 
@@ -282,14 +284,14 @@ export class HomeView extends ItemView {
     }
 
     // --- RENDER FILAS UNIFICADAS ---
-    private renderUnifiedRow(parent: HTMLElement, habit: Habit, dates: string[], sortMode: string) {
+    private renderUnifiedRow(parent: HTMLElement, habit: Habit, dates: string[], sortMode: string, today: string) {
         const row = parent.createDiv("ht-row");
         const settings = this.storage.getData().settingsSnapshot;
         const lang = settings.language;
         
         // Columna Meta (Sticky Left)
         const meta = row.createDiv("ht-habit-meta");
-        meta.style.width = `${this.leftColWidth}px`;
+        meta.style.width = "var(--ht-left-col-width)";
         meta.dataset.habitId = habit.id;
 
         // --- DRAG HANDLE ---
@@ -311,14 +313,12 @@ export class HomeView extends ItemView {
             };
 
             handle.addEventListener("touchstart", (e) => {
-                if (e.cancelable) e.preventDefault();
                 this.draggingId = habit.id;
                 meta.addClass("is-dragging-source");
                 if (navigator.vibrate) navigator.vibrate(20);
-            }, { passive: false });
+            }, { passive: true });
 
             handle.addEventListener("touchmove", (e) => {
-                if (e.cancelable) e.preventDefault();
                 const touch = e.touches[0];
                 const y = touch.clientY;
                 const allRows = Array.from(document.querySelectorAll('.ht-habit-meta'));
@@ -332,7 +332,7 @@ export class HomeView extends ItemView {
                     targetFound.addClass('is-drop-target');
                     this.dropTargetId = targetFound.dataset.habitId || null;
                 }
-            }, { passive: false });
+            }, { passive: true });
 
             handle.addEventListener("touchend", async (e) => {
                 meta.removeClass("is-dragging-source");
@@ -409,7 +409,24 @@ export class HomeView extends ItemView {
                 return; // No renderizar contenido para días no programados
             }
 
+            if (date === today) {
+                cell.addClass("ht-cell-today");
+            }
+
             const content = cell.createDiv("ht-cell-content");
+
+            // --- TOOLTIP (title) ---
+            let tooltip = "";
+            if (ev === "OK") tooltip = t("save-success", lang); 
+            else if (ev === "NO") tooltip = t("trend", lang) + ": " + t("trend", lang); // We'll refine this
+            else if (ev === "NONE") tooltip = t("entry-placeholder", lang);
+
+            // Refinar tooltips basados en lógica experta
+            if (ev === "OK") tooltip = "¡Meta alcanzada!";
+            else if (ev === "NO") tooltip = "Pendiente / Fallido";
+            else if (ev === "NONE") tooltip = "Disponible";
+            
+            cell.setAttr("title", tooltip);
 
             if (ev === "OK") {
                 content.addClass("is-done"); 
@@ -442,6 +459,12 @@ export class HomeView extends ItemView {
         if (habit.type === "yesno") {
             const currentValue = entry?.value;
             const nextValue = currentValue === "✔" ? "NONE" : "✔";
+            
+            // Expert UX: Vibration on success
+            if (nextValue === "✔" && navigator.vibrate) {
+                navigator.vibrate(20);
+            }
+            
             if (nextValue === "NONE") { await deleteEntry(this.storage, habit.id, date); } 
             else { await setEntry(this.storage, habit.id, date, "✔"); }
             return;
@@ -464,10 +487,12 @@ export class HomeView extends ItemView {
         let timer: ReturnType<typeof setTimeout> | null = null;
         let startX = 0, startY = 0;
         let fired = false;
+        let startTimestamp = 0;
 
         const start = (x: number, y: number) => {
             fired = false;
             startX = x; startY = y;
+            startTimestamp = Date.now();
             timer = setTimeout(() => {
                 fired = true;
                 if (navigator.vibrate) navigator.vibrate(30);
@@ -478,34 +503,65 @@ export class HomeView extends ItemView {
         };
 
         const cancel = (x: number, y: number) => {
-            const threshold = 20; 
+            const threshold = 25; // Re-calibrated for better responsiveness
             if (Math.abs(x - startX) > threshold || Math.abs(y - startY) > threshold) {
-                if (timer) clearTimeout(timer);
+                if (timer) {
+                    clearTimeout(timer);
+                    timer = null;
+                }
+                // Si movemos mucho, cancelamos el "tap" también.
                 fired = true; 
             }
-            if (timer) { clearTimeout(timer); timer = null; }
         };
 
-        el.addEventListener("mousedown", (e) => start(e.clientX, e.clientY));
-        el.addEventListener("mousemove", (e) => cancel(e.clientX, e.clientY));
-        el.addEventListener("mouseup", () => { if (timer) { clearTimeout(timer); timer = null; } });
-        el.addEventListener("click", (e) => { e.stopPropagation(); if (!fired) onTap(); });
+        const handleTap = (e: Event) => {
+            if (fired) return;
+            const durationMs = Date.now() - startTimestamp;
+            if (durationMs < duration) {
+                if (timer) { clearTimeout(timer); timer = null; }
+                onTap();
+            }
+        };
+
+        el.addEventListener("mousedown", (e) => {
+            if (e.button !== 0) return; // Only left click
+            start(e.clientX, e.clientY);
+        });
+
+        el.addEventListener("mousemove", (e) => {
+            if (timer) cancel(e.clientX, e.clientY);
+        });
+
+        el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            handleTap(e);
+        });
 
         el.addEventListener("touchstart", (e) => {
+            // No llamar a preventDefault aquí para permitir scroll si es necesario
             const t = e.touches[0];
             start(t.clientX, t.clientY);
         }, { passive: true });
+
         el.addEventListener("touchmove", (e) => {
             const t = e.touches[0];
             cancel(t.clientX, t.clientY);
-        });
+        }, { passive: true });
+
         el.addEventListener("touchend", (e) => {
             if (timer) { clearTimeout(timer); timer = null; }
-            if (!fired) { 
-                if (e.cancelable) e.preventDefault(); 
-                onTap(); 
+            // En Mobile, click event suele dispararse después de touchend.
+            // Pero para evitar delay o problemas de preventDefault, manejamos el tap aquí
+            // y marcamos fired=true para que el click posterior no haga nada.
+            if (!fired) {
+                const durationMs = Date.now() - startTimestamp;
+                if (durationMs < duration) {
+                    onTap();
+                    fired = true; // Bloquea el evento 'click' que viene después
+                }
             }
         });
+
         el.addEventListener("contextmenu", (e) => e.preventDefault());
     }
 

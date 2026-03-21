@@ -75,3 +75,18 @@ export function getRangeBounds(mode: "week" | "month" | "year" | "all"): { from:
 
 	return { from, to: today };
 }
+
+/**
+ * Retorna el lunes (inicio de semana ISO) para una fecha dada YYYY-MM-DD.
+ */
+export function getStartOfISOWeek(dateStr: string): string {
+    const d = toDateOnly(dateStr);
+    const day = d.getDay(); 
+    const diff = (day === 0 ? -6 : 1 - day); // Ajuste a lunes
+    d.setDate(d.getDate() + diff);
+    
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dayVal = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dayVal}`;
+}

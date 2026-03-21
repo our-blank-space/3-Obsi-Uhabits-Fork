@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS: HabitPluginSettings = {
 	noteFilenamePattern: "{{date:YYYY-MM-DD}} - {{habit}}",
 	noteTemplate: "---\ntype: habit-log\n---\n# {{habit}}\n{{notes}}",
 	reportsFolder: "Habit Logs",
-	dayBarOrientation: "recent-right",
+	dayBarOrientation: "recent-left",
 	autoHideCompletedToday: false,
 	soundsEnabled: false,
 	backupFolder: "Habit Backups",

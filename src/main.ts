@@ -1,11 +1,11 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
-import { HabitStorage } from "./src/core/storage";
-import { HomeView, HABIT_VIEW_TYPE } from "./src/ui/views/HomeView";
-import { HabitSettingsTab } from "./src/ui/settings";
-import { CreateHabitModal } from "./src/ui/modals/CreateHabitModal";
-import { exportJsonBackup } from "./src/utils/backup";
-import { todayString, addDays, compareDateStr } from "./src/utils/dates";
-import { t } from "./src/i18n";
+import { HabitStorage } from "./core/storage";
+import { HomeView, HABIT_VIEW_TYPE } from "./ui/views/HomeView";
+import { HabitSettingsTab } from "./ui/settings";
+import { CreateHabitModal } from "./ui/modals/CreateHabitModal";
+import { exportJsonBackup } from "./utils/backup";
+import { todayString, addDays, compareDateStr } from "./utils/dates";
+import { t } from "./i18n";
 
 export default class HabitTrackerPlugin extends Plugin {
 	storage!: HabitStorage;

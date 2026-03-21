@@ -21,6 +21,7 @@ export class EditHabitModal extends Modal {
     private freqMode: string;
     private selectedDays: number[];
     private interval: number;
+    private daysPerWeek: number | undefined;
     private anchorDay: number;
     private lang: any;
 
@@ -44,6 +45,7 @@ export class EditHabitModal extends Modal {
         const oldInt = this.habit.frequency?.interval;
         this.interval = typeof oldInt === "number" ? oldInt : 1;
         this.selectedDays = this.habit.frequency?.days || [0,1,2,3,4,5,6];
+        this.daysPerWeek = this.habit.frequency?.daysPerWeek; // Puede ser undefined
         this.anchorDay = this.habit.frequency?.anchorDay ?? 1;
 	}
 
@@ -132,7 +134,7 @@ export class EditHabitModal extends Modal {
         const anchorDayContainer = contentEl.createDiv("ht-day-selector-container ht-is-hidden");
         const intervalContainer = contentEl.createDiv("ht-interval-days-container ht-is-hidden");
 
-        const updateFrequencyUI = () => {
+        let updateFrequencyUI = () => {
             // Mostrar "Comenzar el" para Diario y Semanal
             anchorDayContainer.toggleClass("ht-is-hidden", this.freqMode !== "daily" && this.freqMode !== "weekly");
             // Mostrar "Intervalo" solo para Diario
@@ -145,15 +147,15 @@ export class EditHabitModal extends Modal {
                 this.selectedDays = [1, 2, 3, 4, 5];
                 this.interval = 1;
             } else if (this.freqMode === "weekly") {
-                this.selectedDays = [this.anchorDay];
+                // Para semanal (1x o Nx por semana), permitimos cualquier día y limitamos por daysPerWeek
+                this.selectedDays = this.selectedDays.length === 1 ? [0, 1, 2, 3, 4, 5, 6] : this.selectedDays; 
                 this.interval = 1;
+                this.daysPerWeek = this.daysPerWeek || 1;
                 this.renderAnchorSelector(anchorDayContainer);
             }
-
-            const intervalSettingName = this.freqMode === "daily" ? t("freq-interval", lang) : t("frequency", lang);
-            intervalContainer.querySelector(".setting-item-name")?.setText(intervalSettingName);
         };
 
+        // El dropdown de Frecuencia que faltaba
         freqTypeSetting.addDropdown(dropdown => {
             dropdown.addOption("daily", t("freq-daily", lang));
             dropdown.addOption("weekdays", t("freq-weekdays", lang));
@@ -161,9 +163,34 @@ export class EditHabitModal extends Modal {
             dropdown.setValue(this.freqMode);
             dropdown.onChange(v => {
                 this.freqMode = v;
+                if (v === "weekly") this.daysPerWeek = this.daysPerWeek || 1;
+                else if (v === "daily" || v === "weekdays") this.daysPerWeek = undefined;
                 updateFrequencyUI();
             });
         });
+
+        // 🔥 NUEVO: Meta de Días por Semana (solo para Semanal)
+        const dpwContainer = contentEl.createDiv("ht-dpw-container ht-is-hidden");
+        new Setting(dpwContainer)
+            .setName(t("days-per-week", lang))
+            .addText(text => {
+                text.setPlaceholder("1")
+                    .setValue(String(this.daysPerWeek || 1))
+                    .onChange(v => {
+                        const n = Number(v);
+                        this.daysPerWeek = isNaN(n) || n < 1 ? 1 : n;
+                    });
+                text.inputEl.type = "number";
+            });
+
+        const originalUpdateFrequencyUI = updateFrequencyUI;
+        updateFrequencyUI = () => {
+            originalUpdateFrequencyUI();
+            dpwContainer.toggleClass("ht-is-hidden", this.freqMode !== "weekly");
+
+            const intervalSettingName = this.freqMode === "daily" ? t("freq-interval", lang) : t("frequency", lang);
+            intervalContainer.querySelector(".setting-item-name")?.setText(intervalSettingName);
+        };
 
         new Setting(intervalContainer)
             .setName(t("freq-interval", lang))
@@ -259,9 +286,8 @@ export class EditHabitModal extends Modal {
             btn.onclick = (e) => {
                 e.preventDefault();
                 this.anchorDay = day.id;
-                if (this.freqMode === "weekly") {
-                    this.selectedDays = [this.anchorDay];
-                }
+                // No restringir selectedDays a un solo día en semanal. 
+                // Permitimos cualquier día y limitamos con daysPerWeek.
                 this.renderAnchorSelector(parent);
             };
         });
@@ -285,6 +311,7 @@ export class EditHabitModal extends Modal {
             mode: this.freqMode as any,
             days: this.selectedDays,
             interval: this.interval,
+            daysPerWeek: this.daysPerWeek,
             anchorDay: this.anchorDay
         };
 
