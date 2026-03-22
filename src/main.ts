@@ -11,16 +11,16 @@ export default class HabitTrackerPlugin extends Plugin {
 	storage!: HabitStorage;
 
 	async onload() {
-		console.log("Cargando Habit Loop Tracker...");
+		console.log("Loading Habit Loop Tracker...");
 
-		// 1. Cargar Storage
+		// 1. Load Storage
 		this.storage = new HabitStorage(this);
 		await this.storage.load();
 
-		// 1b. Backup Automático Semanal
+		// 1b. Weekly Automatic Backup
 		await this.checkAutomaticBackup();
 
-		// 2. Registrar Vista
+		// 2. Register View
 		this.registerView(
 			HABIT_VIEW_TYPE,
 			(leaf) => new HomeView(leaf, this.storage)
@@ -31,7 +31,7 @@ export default class HabitTrackerPlugin extends Plugin {
 			this.activateView();
 		});
 
-		// 4. Comandos
+		// 4. Commands
 		this.addCommand({
 			id: "open-habit-tracker",
 			name: t("dashboard"), // "Abrir Habit Tracker"
@@ -40,13 +40,13 @@ export default class HabitTrackerPlugin extends Plugin {
 
 		this.addCommand({
 			id: "create-new-habit",
-			name: t("create-habit"), // "Crear Nuevo Hábito"
+			name: t("create-habit"), // "Create New Habit"
 			callback: () => {
 				new CreateHabitModal(this.app, this.storage).open();
 			}
 		});
 
-		// 5. Configuración
+		// 5. Settings
 		this.addSettingTab(new HabitSettingsTab(this.app, this, this.storage));
 	}
 
@@ -74,14 +74,14 @@ export default class HabitTrackerPlugin extends Plugin {
 		const today = todayString();
 		const last = data.lastBackup;
 
-		// Si nunca hubo backup o fue hace más de 7 días
+		// If never backed up or was more than 7 days ago
 		if (!last || compareDateStr(addDays(last, 7), today) <= 0) {
-			console.log("Iniciando backup semanal automático...");
+			console.log("Starting automatic weekly backup...");
 			try {
 				await exportJsonBackup(this.app, this.storage);
 				await this.storage.update(d => d.lastBackup = today);
 			} catch (e) {
-				console.error("Error en backup automático:", e);
+				console.error("Automatic backup error:", e);
 			}
 		}
 	}

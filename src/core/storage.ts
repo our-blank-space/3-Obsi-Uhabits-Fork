@@ -49,7 +49,7 @@ export class HabitStorage {
 	}
 
 	async save(): Promise<void> {
-		// Guardar solo metadatos en el archivo principal
+		// Save only metadata in the main file
 		await this.plugin.saveData(this.data);
 		this.events.trigger("changed", this.data);
 	}
@@ -59,7 +59,7 @@ export class HabitStorage {
 	}
 
 	/**
-	 * Carga las entradas de un hábito bajo demanda
+	 * Loads entries for a habit on demand
 	 */
 	async getEntries(habitId: string): Promise<HabitEntries> {
 		if (this.entriesCache.has(habitId)) {
@@ -73,14 +73,14 @@ export class HabitStorage {
 	}
 
 	/**
-	 * Versión síncrona para UI (requiere pre-carga)
+	 * Synchronous version for UI (requires pre-loading)
 	 */
 	getEntriesSync(habitId: string): HabitEntries {
 		return this.entriesCache.get(habitId) ?? { entries: {} };
 	}
 
 	/**
-	 * Guarda las entradas de un hábito de forma independiente
+	 * Saves entries for a habit independently
 	 */
 	async saveEntries(habitId: string, data: HabitEntries): Promise<void> {
 		this.entriesCache.set(habitId, data);
@@ -94,7 +94,7 @@ export class HabitStorage {
 	}
 
 	/**
-	 * Fuerza un disparo de eventos para refrescar la UI
+	 * Forces an events trigger to refresh the UI
 	 */
 	refresh() {
 		this.events.trigger("changed", this.data);
@@ -111,19 +111,19 @@ export class HabitStorage {
 	private async migrate(raw: any): Promise<HabitData> {
 		const v: any = raw ?? {};
 
-		// Migración a versión 2 (Modular)
+		// Migration to version 2 (Modular)
 		if (v.version < 2) {
-			console.log("Migrando Habit Loop a almacenamiento modular...");
+			console.log("Migrating Habit Loop to modular storage...");
 			const habitsWithData = v.habits || [];
 			const newHabits: Habit[] = [];
 
 			for (const h of habitsWithData) {
 				const { entries, ...metadata } = h;
 
-				// Guardar entries en su propio archivo
+				// Save entries in their own file
 				await this.modular.saveHabitData(h.id, { entries: entries || {} });
 
-				// Guardar solo metadatos
+				// Save only metadata
 				newHabits.push(metadata);
 			}
 

@@ -51,7 +51,7 @@ export class ArchivedHabitsModal extends Modal {
                 attr: { style: "display:flex; gap:8px;" }
             });
 
-            // Botón Restaurar
+            // Restore Button
             const btnRestore = actions.createEl("button", { text: t("restore", lang) });
             btnRestore.onclick = async () => {
                 await restoreHabit(this.storage, habit.id);
@@ -60,7 +60,7 @@ export class ArchivedHabitsModal extends Modal {
                 this.onOpen();
             };
 
-            // Botón Eliminar Definitivamente
+            // Permanently Delete Button
             const btnDel = actions.createEl("button", { text: t("delete", lang), cls: "mod-warning" });
             btnDel.onclick = async () => {
                 if(confirm(t("confirm-delete-permanent", lang))) {

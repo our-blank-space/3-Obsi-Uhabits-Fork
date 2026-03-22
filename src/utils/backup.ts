@@ -39,18 +39,18 @@ export async function importJsonBackup(app: App, storage: HabitStorage, path: st
 		throw new Error("El archivo no es un JSON válido.");
 	}
 
-	// Validación Defensiva de Estructura
+	// Defensive Structure Validation
 	if (!raw || typeof raw !== 'object') {
 		throw new Error("El JSON importado no tiene una estructura de objeto válida.");
 	}
 	
 	if (!Array.isArray(raw.habits)) {
-		throw new Error("El JSON importado no contiene una lista de hábitos (propiedad 'habits' faltante o inválida).");
+		throw new Error("Imported JSON does not contain a habits list (missing or invalid 'habits' property).");
 	}
 
-	// storage.importFromRaw ya maneja la migración/distribución modular si detecta versión < 2
-	// Pero aquí recibimos un JSON que ya podría ser v2 agregada.
-	// Vamos a forzar que storage.importFromRaw lo procese.
+	// storage.importFromRaw already handles modular migration/distribution if it detects version < 2
+	// But here we receive a JSON that might already be v2 added.
+	// We will force storage.importFromRaw to process it.
 	await storage.importFromRaw(raw);
 }
 
@@ -69,17 +69,17 @@ export async function exportCsv(app: App, storage: HabitStorage): Promise<string
 		for (const date of Object.keys(entriesData.entries)) {
 			const e = entriesData.entries[date];
 			
-			// Manejar valor
+			// Handle value
 			let v = "";
 			if (typeof e.value === "number") v = String(e.value);
 			else v = e.value;
 			
-			// Manejar campos opcionales
+			// Handle optional fields
 			const mood = e.mood ?? "";
 			const energy = e.energy ?? "";
 			const note = e.notePath ?? "";
 			
-			// Escapar textos para CSV
+			// Escape texts for CSV
 			const safeName = h.name.replace(/"/g, '""');
 			const safeNote = note.replace(/"/g, '""');
 

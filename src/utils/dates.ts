@@ -1,6 +1,6 @@
 export function todayString(): string {
 	const d = new Date();
-	// Usar local time
+	// Use local time
 	const y = d.getFullYear();
 	const m = String(d.getMonth() + 1).padStart(2, "0");
 	const day = String(d.getDate()).padStart(2, "0");
@@ -8,17 +8,17 @@ export function todayString(): string {
 }
 
 export function toDateOnly(dateStr: string): Date {
-	// CORRECCIÓN IMPORTANTE: 
-	// Evitamos new Date("2023-01-20") porque asume UTC y resta horas según timezone.
-	// Creamos la fecha usando los componentes numéricos locales.
+	// IMPORTANT CORRECTION: 
+	// We avoid new Date("2023-01-20") because it assumes UTC and subtracts hours based on timezone.
+	// We create the date using local numeric components.
 	const [y, m, d] = dateStr.split("-").map((x) => Number(x));
-	// Ojo: el mes en constructor es 0-indexado.
-	return new Date(y, m - 1, d, 12, 0, 0); // Mediodía para seguridad
+	// Note: month in constructor is 0-indexed.
+	return new Date(y, m - 1, d, 12, 0, 0); // Noon for safety
 }
 
 export function addDays(dateStr: string, offset: number): string {
 	const d = toDateOnly(dateStr);
-	d.setDate(d.getDate() + offset); // Usamos setDate local, no setUTCDate
+	d.setDate(d.getDate() + offset); // Use local setDate, not setUTCDate
 	const y = d.getFullYear();
 	const m = String(d.getMonth() + 1).padStart(2, "0");
 	const day = String(d.getDate()).padStart(2, "0");
@@ -77,12 +77,12 @@ export function getRangeBounds(mode: "week" | "month" | "year" | "all"): { from:
 }
 
 /**
- * Retorna el lunes (inicio de semana ISO) para una fecha dada YYYY-MM-DD.
+ * Returns Monday (ISO week start) for a given date YYYY-MM-DD.
  */
 export function getStartOfISOWeek(dateStr: string): string {
     const d = toDateOnly(dateStr);
     const day = d.getDay(); 
-    const diff = (day === 0 ? -6 : 1 - day); // Ajuste a lunes
+    const diff = (day === 0 ? -6 : 1 - day); // Adjust to Monday
     d.setDate(d.getDate() + diff);
     
     const y = d.getFullYear();

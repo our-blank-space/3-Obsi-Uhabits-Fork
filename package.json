@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-habit-loop",
 	"version": "1.5.5.1",
-	"description": "Tracker de hábitos avanzado estilo 'Loop' para Obsidian.",
+	"description": "Advanced Loop-style habit tracker for Obsidian.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

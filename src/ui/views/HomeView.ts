@@ -21,11 +21,11 @@ export class HomeView extends ItemView {
     storage: HabitStorage;
     private detachEvents?: () => void;
 
-    // Variables Drag & Drop Mobile
+    // Mobile Drag & Drop Variables
     private draggingId: string | null = null;
     private dropTargetId: string | null = null;
 
-    // Variables Resizer
+    // Resizer Variables
     private leftColWidth: number = 180;
     private activeCategory: string = "all";
     private globalListeners: Array<[string, EventListener]> = [];
@@ -99,7 +99,7 @@ export class HomeView extends ItemView {
         const lang = settings.language;
         const today = todayString();
 
-        // Creamos un fragmento para evitar parpadeos masivos
+        // We create a fragment to avoid massive flickers
         const fragment = document.createDocumentFragment();
         const root = document.createElement("div");
         root.className = "ht-render-container";
@@ -139,16 +139,16 @@ export class HomeView extends ItemView {
         sponsorBtn.style.color = "#FF5A5F";
         sponsorBtn.onclick = () => window.open("https://ko-fi.com/andresvega", "_blank");
 
-        // --- DATOS Y CATEGORÍAS ---
+        // --- DATA AND CATEGORIES ---
         const allActiveHabits = data.habits.filter(h => !h.archived);
         
-        // Extraer categorías únicas
+        // Extract unique categories
         const uniqueCategories = new Set<string>();
         allActiveHabits.forEach(h => {
             if (h.category) uniqueCategories.add(h.category);
         });
 
-        // Crear Dropdown de Categorías si hay alguna
+        // Create Category Dropdown if any exist
         if (uniqueCategories.size > 0) {
             const catSelect = controls.createEl("select", { cls: "ht-btn ht-category-select" });
             catSelect.createEl("option", { value: "all", text: t("all-categories", lang) });
@@ -164,7 +164,7 @@ export class HomeView extends ItemView {
 
         let habits = allActiveHabits;
         
-        // Filtar por Categoría
+        // Filter by Category
         if (this.activeCategory !== "all") {
             habits = habits.filter(h => h.category === this.activeCategory);
         }
@@ -251,7 +251,7 @@ export class HomeView extends ItemView {
         container.appendChild(fragment);
     }
 
-    // --- LOGICA RESIZER UNIFICADO ---
+    // --- UNIFIED RESIZER LOGIC ---
     private setupUnifiedResizer(resizer: HTMLElement, container: HTMLElement) {
         const start = (e: MouseEvent | TouchEvent) => {
             e.preventDefault();
@@ -283,13 +283,13 @@ export class HomeView extends ItemView {
         resizer.addEventListener("touchstart", start, { passive: false });
     }
 
-    // --- RENDER FILAS UNIFICADAS ---
+    // --- RENDER UNIFIED ROWS ---
     private renderUnifiedRow(parent: HTMLElement, habit: Habit, dates: string[], sortMode: string, today: string) {
         const row = parent.createDiv("ht-row");
         const settings = this.storage.getData().settingsSnapshot;
         const lang = settings.language;
         
-        // Columna Meta (Sticky Left)
+        // Goal Column (Sticky Left)
         const meta = row.createDiv("ht-habit-meta");
         meta.style.width = "var(--ht-left-col-width)";
         meta.dataset.habitId = habit.id;
@@ -406,7 +406,7 @@ export class HomeView extends ItemView {
 
             if (ev === "OFF") {
                 cell.addClass("is-not-scheduled");
-                return; // No renderizar contenido para días no programados
+                return; // Do not render content for unscheduled days
             }
 
             if (date === today) {
@@ -421,10 +421,10 @@ export class HomeView extends ItemView {
             else if (ev === "NO") tooltip = t("trend", lang) + ": " + t("trend", lang); // We'll refine this
             else if (ev === "NONE") tooltip = t("entry-placeholder", lang);
 
-            // Refinar tooltips basados en lógica experta
-            if (ev === "OK") tooltip = "¡Meta alcanzada!";
-            else if (ev === "NO") tooltip = "Pendiente / Fallido";
-            else if (ev === "NONE") tooltip = "Disponible";
+            // Refine tooltips based on expert logic
+            if (ev === "OK") tooltip = "Goal reached!";
+            else if (ev === "NO") tooltip = "Pending / Failed";
+            else if (ev === "NONE") tooltip = "Available";
             
             cell.setAttr("title", tooltip);
 
@@ -509,7 +509,7 @@ export class HomeView extends ItemView {
                     clearTimeout(timer);
                     timer = null;
                 }
-                // Si movemos mucho, cancelamos el "tap" también.
+                // If we move too much, we cancel the "tap" as well.
                 fired = true; 
             }
         };
@@ -551,13 +551,13 @@ export class HomeView extends ItemView {
         el.addEventListener("touchend", (e) => {
             if (timer) { clearTimeout(timer); timer = null; }
             // En Mobile, click event suele dispararse después de touchend.
-            // Pero para evitar delay o problemas de preventDefault, manejamos el tap aquí
-            // y marcamos fired=true para que el click posterior no haga nada.
+            // But to avoid delay or preventDefault issues, we handle the tap here
+            // and mark fired=true so the subsequent click doesn't do anything.
             if (!fired) {
                 const durationMs = Date.now() - startTimestamp;
                 if (durationMs < duration) {
                     onTap();
-                    fired = true; // Bloquea el evento 'click' que viene después
+                    fired = true; // Blocks the 'click' event that comes after
                 }
             }
         });

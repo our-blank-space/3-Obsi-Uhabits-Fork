@@ -54,7 +54,7 @@ export class HabitAnalyticsModal extends Modal {
 		const titleRow = header.createDiv("ham-title-row");
 		titleRow.createEl("h2", { text: this.habit.name });
 
-		// Selector de Rango
+		// Range Selector
 		const rangeControls = header.createDiv("ham-range-controls");
 		this.createRangeBtn(rangeControls, "week", "7D", lang);
 		this.createRangeBtn(rangeControls, "month", "30D", lang);
@@ -75,7 +75,7 @@ export class HabitAnalyticsModal extends Modal {
 		addCard(t("score", lang), `${overall.percent}%`, `${overall.ok}/${overall.total} ${t("days", lang)}`);
 		addCard(t("streak", lang), `${streak.currentStreak}`, `${t("max", lang)}: ${streak.bestStreak}`);
 
-		// --- CONTENEDOR DE GRÁFICOS DINÁMICO ---
+		// --- DYNAMIC CHARTS WRAPPER ---
 		const chartsWrapper = contentEl.createDiv("ham-charts-wrapper");
 		await this.renderCharts(chartsWrapper, entries, lang);
 
@@ -121,11 +121,11 @@ export class HabitAnalyticsModal extends Modal {
 	private async renderCharts(container: HTMLElement, entries: HabitEntries, lang: any) {
 		const avgEnergy = getAverageEnergy(this.habit, entries, this.currentRange);
 
-		// --- 1. Bloque Contexto (Energía y Ánimo) ---
+		// --- 1. Context Block (Energy and Mood) ---
 		container.createDiv("ham-section-title").setText(t("context-header", lang));
 		const contextGrid = container.createDiv("ham-summary-grid");
 
-		// Tarjeta Energía
+		// Energy Card
 		const energyCard = contextGrid.createDiv("ham-card");
 		energyCard.createDiv("ham-card-title").setText(t("avg-energy", lang));
 		const enVal = energyCard.createDiv("ham-card-value");
@@ -133,7 +133,7 @@ export class HabitAnalyticsModal extends Modal {
 		enVal.style.color = "#F9A825";
 		energyCard.createDiv("ham-card-sub").setText(t("on-completed-days", lang));
 
-		// Tarjeta Gráfico Mood (Donut)
+		// Mood Chart Card (Donut)
 		const moodCard = contextGrid.createDiv("ham-card");
 		moodCard.style.position = "relative";
 		moodCard.style.height = "220px";
@@ -143,7 +143,7 @@ export class HabitAnalyticsModal extends Modal {
 
 		const moodCanvas = moodCard.createEl("canvas");
 
-		// --- 2. Gráficos Principales ---
+		// --- 2. Main Charts ---
 		container.createDiv("ham-section-title").setText(t("trend", lang));
 		const scoreContainer = container.createDiv("ham-chart-container");
 		scoreContainer.style.height = "200px";

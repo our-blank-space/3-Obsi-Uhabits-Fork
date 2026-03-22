@@ -127,14 +127,14 @@ export function buildHeatmapData(habit: Habit, entries: HabitEntries): HeatmapDa
     const today = todayString();
     const dates = Object.keys(entries.entries).sort();
     
-    // Si no hay fechas, creamos un mapa vacío
+    // If no dates, return empty map
     if (dates.length === 0) return map;
 
     const start = dates[0];
     
     for (let d = start; compareDateStr(d, today) <= 0; d = addDays(d, 1)) {
         const ev = evalHabitOnDateWithEntries(habit, d, entries);
-        // Omitimos los puramente NONE donde no hubo interacción ni requiere, para ahorrar espacio
+        // Omit purely NONE where there was no interaction or requirement, to save space
         if (ev !== "NONE") map[d] = ev;
     }
     return map;
@@ -207,7 +207,7 @@ export function buildHistorySeries(habit: Habit, entries: HabitEntries, mode: "w
     return { labels, values };
 }
 
-// Wrappers asíncronos para integración
+// Async wrappers for integration
 export async function getStreakInfoForHabit(storage: HabitStorage, habitId: string): Promise<StreakInfo> {
     const habit = storage.getData().habits.find((h) => h.id === habitId);
     if (!habit) return { bestStreak: 0, currentStreak: 0 };
@@ -226,8 +226,8 @@ export async function getStreakInfoForHabit(storage: HabitStorage, habitId: stri
             curr++; 
             if (curr > best) best = curr;
         } else if (ev === "NO") {
-            // Solo rompemos la racha frente a un "NO" explícito. 
-            // Los "NONE" (días sin registrar en hábitos cuantitativos sin meta o días ignorados por frecuencia) mantienen viva la racha.
+            // We only break the streak on an explicit "NO". 
+            // "NONE" (untracked days in quantitative habits without goal or frequency-ignored days) keep the streak alive.
             curr = 0;
         }
         

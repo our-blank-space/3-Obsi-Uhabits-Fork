@@ -32,9 +32,9 @@ export async function generateMonthlyReport(app: App, storage: HabitStorage): Pr
 		}
 		
 		const percent = total > 0 ? Math.round((ok / total) * 100) : 0;
-		content += `## ${h.name}\n- **Cumplimiento**: ${ok}/${total} (${percent}%)\n`;
+		content += `## ${h.name}\n- **Compliance**: ${ok}/${total} (${percent}%)\n`;
 		
-		// Calcular información adicional para el reporte mensual
+		// Calculate additional info for the monthly report
 		let totalEnergy = 0;
 		let energyCount = 0;
 		const moodCounts: Record<string, number> = {};
@@ -57,8 +57,8 @@ export async function generateMonthlyReport(app: App, storage: HabitStorage): Pr
 		    ? Object.keys(moodCounts).reduce((a, b) => moodCounts[a] > moodCounts[b] ? a : b)
 			: "N/A";
 
-		content += `- **Energía Promedio**: ${avgEnergy}\n`;
-		content += `- **Ánimo Frecuente**: ${topMood}\n\n`;
+		content += `- **Average Energy**: ${avgEnergy}\n`;
+		content += `- **Frequent Mood**: ${topMood}\n\n`;
 	}
 
 	const existing = app.vault.getAbstractFileByPath(path);

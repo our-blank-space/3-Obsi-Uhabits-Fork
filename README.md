@@ -1,62 +1,62 @@
 # 🔄 Habit Loop Tracker for Obsidian
 
-**Habit Loop Tracker** es un plugin premium para [Obsidian](https://obsidian.md) diseñado para construir consistencia a largo plazo. Basado en el algoritmo de **puntuación exponencial**, este plugin te permite fallar sin perder tu progreso, enfocándose en la "fuerza" del hábito en lugar de simples rachas.
+**Habit Loop Tracker** is a premium plugin for [Obsidian](https://obsidian.md) designed to build long-term consistency. Based on an **exponential scoring** algorithm, this plugin allows you to fail without losing your progress, focusing on habit "strength" rather than simple streaks.
 
-## 📺 Vista Previa
+## 📺 Preview
 
-| **Dashboard Global** | **Creación de Hábitos** |
+| **Global Dashboard** | **Habit Creation** |
 |:---:|:---:|
-| ![Dashboard Global](Resources/dashboard_global.png) | ![Crear Hábito](Resources/create_habit.png) |
+| ![Global Dashboard](Resources/dashboard_global.png) | ![Create Habit](Resources/create_habit.png) |
 
-| **Vista de Cuadrícula** | **Analíticas Avanzadas** |
+| **Grid View** | **Advanced Analytics** |
 |:---:|:---:|
-| ![Vista Cuadrícula](Resources/grid_view.png) | ![Analíticas](Resources/analytics_top.png) |
+| ![Grid View](Resources/grid_view.png) | ![Analytics](Resources/analytics_top.png) |
 
 > [!TIP]
-> **Explora el Plugin**: Mira el flujo completo de registro y analíticas en acción.
+> **Explore the Plugin**: Watch the full recording and analytics flow in action.
 > ![Demo GIF](Resources/demo1.gif)
 
 ---
 
-## 🏗️ Créditos y Origen
+## 🏗️ Credits and Origin
 
-Este plugin es un **fork** adaptado para Obsidian del excelente proyecto de código abierto **[Loop Habit Tracker](https://github.com/iSoron/uhabits)** (Android), creado por **Álinson Santos Xavier**. 
+This plugin is a **fork** adapted for Obsidian from the excellent open-source project **[Loop Habit Tracker](https://github.com/iSoron/uhabits)** (Android), created by **Álinson Santos Xavier**.
 
-Respetamos la esencia del algoritmo original para traer la mejor experiencia de seguimiento de hábitos a tu base de conocimientos personal. Este proyecto se distribuye bajo la licencia **GPL-3.0**.
-
----
-
-## 🚀 Instalación Rápida
-
-### Manual (Recomendado)
-1. Descarga `main.js`, `manifest.json` y `styles.css` de la última **[Release](https://github.com/our-blank-space/3-Obsi-Uhabits-Fork/releases)**.
-2. Colócalos en `.obsidian/plugins/obsidian-habit-tracker/`.
-3. Activa el plugin en la configuración de Obsidian.
+We respect the essence of the original algorithm to bring the best habit-tracking experience to your personal knowledge base. This project is distributed under the **GPL-3.0** license.
 
 ---
 
-## 🎨 Guía de Uso
+## 🚀 Quick Installation
 
-1.  **Crea**: Usa el botón **"+ Nuevo"** para definir tus metas.
-2.  **Registra**: Toca una celda para marcar progreso. Mantén presionado para detalles.
-3.  **Analiza**: Haz clic en el nombre del hábito para ver estadísticas avanzadas.
-4.  **Dashboard Global**: Visualiza tu mapa de calor de contribuciones globales (estilo GitHub) y rachas activas de todos tus hábitos interactuando con el ícono de estadísticas.
+### Manual (Recommended)
+1. Download `main.js`, `manifest.json`, and `styles.css` from the latest **[Release](https://github.com/our-blank-space/3-Obsi-Uhabits-Fork/releases)**.
+2. Place them in `.obsidian/plugins/obsidian-habit-tracker/`.
+3. Enable the plugin in Obsidian settings.
 
 ---
 
-## 💎 Soporte y Servicios
+## 🎨 Usage Guide
 
-¿Te ha resultado útil **Habit Loop Tracker**? Acepto donaciones que se destinan a futuros esfuerzos de desarrollo. Para este proyecto de hobby, no acepto pagos por recompensas de errores o solicitudes de funciones para evitar presiones adicionales.
+1.  **Create**: Use the **"+ New"** button to define your goals.
+2.  **Log**: Tap a cell to mark progress. Long-press for details.
+3.  **Analyze**: Click on the habit name to view advanced statistics.
+4.  **Global Dashboard**: Visualize your global contribution heatmap (GitHub style) and active streaks for all your habits by interacting with the statistics icon.
 
-Sin embargo, **si necesitas un proyecto específico y personalizado en Obsidian**, también puedes contactarme para su desarrollo como un servicio profesional.
+---
 
-### ¡Apoya el desarrollo o contacta conmigo!
+## 💎 Support and Services
+
+Found **Habit Loop Tracker** useful? I accept donations that go toward future development efforts. For this hobby project, I don't accept payments for bug bounties or feature requests to avoid additional pressure.
+
+However, **if you need a specific and custom Obsidian project**, you can also contact me for professional development services.
+
+### Support development or contact me!
 
 <a href='https://ko-fi.com/D1D61W9BNO' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi3.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 [![PayPal](https://img.shields.io/badge/PayPal-004595?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/AndresFelipeVH)
 
 ---
 
-*Desarrollado con ❤️ para la comunidad de Obsidian.*
+*Developed with ❤️ for the Obsidian community.*
 
 

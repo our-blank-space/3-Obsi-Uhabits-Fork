@@ -22,7 +22,7 @@ export class HabitSettingsTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: t("settings-title", lang) });
 
-		// --- Notas ---
+		// --- Notes ---
 		new Setting(containerEl).setHeading().setName(t("settings-notes-heading", lang));
 
 		new Setting(containerEl)
@@ -38,7 +38,7 @@ export class HabitSettingsTab extends PluginSettingTab {
 				s.openNoteAfterCreate = v; await this.storage.save();
 			}));
 
-		// --- Interfaz ---
+		// --- Interface ---
 		new Setting(containerEl).setHeading().setName(t("settings-interface-heading", lang));
 
 		new Setting(containerEl)
@@ -72,7 +72,7 @@ export class HabitSettingsTab extends PluginSettingTab {
 				s.autoHideCompletedToday = v; await this.storage.save();
 			}));
 
-		// --- Datos ---
+		// --- Data ---
 		new Setting(containerEl).setHeading().setName(t("settings-data-heading", lang));
 
 		new Setting(containerEl).setName("Backups")
@@ -109,7 +109,7 @@ export class HabitSettingsTab extends PluginSettingTab {
 				new Notice(t("save-success", lang));
 			}));
 
-		// --- Soporte ---
+		// --- Support ---
 		new Setting(containerEl).setHeading().setName(t("settings-support-heading", lang));
 
 		new Setting(containerEl)

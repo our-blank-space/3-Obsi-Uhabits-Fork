@@ -41,7 +41,7 @@ export async function createMonthlyHabitLog(
 	const dayName = dayNames[dayOfWeek].slice(0, 3);
 	const dateWithDay = `${dateStr} (${dayName})`;
 
-	// Mapeo binario / cuantitativo
+	// Binary / Quantitative mapping
 	let binaryHabit = "0";
 	let quantValue = valueText;
 
@@ -54,7 +54,7 @@ export async function createMonthlyHabitLog(
 		quantValue = String(Math.floor(num));
 	}
 
-	// Escapar pipes de Markdown en las observaciones
+	// Escape Markdown pipes in observations
 	const cleanNotes = userNotes.replace(/\n/g, " ").replace(/\|/g, "\\|").trim();
 	const newRow = `| ${dateWithDay} | ${habit.name}: ${binaryHabit} | ${quantValue} | ${mood || "-"} | ${cleanNotes} |`;
 
@@ -65,7 +65,7 @@ export async function createMonthlyHabitLog(
 		const rawContent = await app.vault.read(existing);
 		const lines = rawContent.split("\n");
 
-		// Buscar y actualizar si ya existe una fila para este hábito en esta fecha
+		// Search and update if a row for this habit on this date already exists
 		const rowPrefix = `| ${dateWithDay} | ${habit.name}:`;
 		let found = false;
 		const newLines = lines.map(line => {

@@ -100,7 +100,7 @@ export class HabitDetailModal extends Modal {
 			box.title = `${d}: ${status ? (status === "OK" ? "OK" : "NO") : t("no-data-string", lang)}`;
 		}
 
-		// Leyenda del heatmap
+		// Heatmap legend
 		const legend = heatmapSection.createDiv("ht-heatmap-legend");
 		legend.createSpan({ cls: "ht-heatmap-legend-label", text: t("less", lang) });
 		const legendBoxes = legend.createDiv("ht-heatmap-legend-boxes");
@@ -110,7 +110,7 @@ export class HabitDetailModal extends Modal {
 		});
 		legend.createSpan({ cls: "ht-heatmap-legend-label", text: t("more", lang) });
 
-		// --- Patrón Semanal ---
+		// --- Weekly Pattern ---
 		const weekSection = contentEl.createDiv("ht-detail-section");
 		weekSection.createDiv("ht-detail-section-title").setText(t("weekly-pattern", lang));
 

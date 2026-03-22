@@ -109,7 +109,7 @@ export class GlobalDashboardModal extends Modal {
 		createStatCard("📊", String(avgStreak), t("avg-streak-label", lang), "#6366F1");
 		createStatCard("⚡", String(activeHabits.length), t("active-habits-count", lang), "#10B981");
 
-		// --- 3. Top 5 Rachas ---
+		// --- 3. Top 5 Streaks ---
 		const streakSection = contentEl.createDiv("ht-dashboard-section");
 		const streakTitle = streakSection.createDiv("ht-dashboard-section-title");
 		streakTitle.setText(`🏆 ${t("top-active-streaks", lang)}`);
@@ -136,7 +136,7 @@ export class GlobalDashboardModal extends Modal {
 			streakSection.createDiv({ text: t("no-streaks-yet", lang), cls: "ht-empty" });
 		}
 
-		// --- 4. Consistencia Semanal ---
+		// --- 4. Weekly Consistency ---
 		const weekSection = contentEl.createDiv("ht-dashboard-section");
 		weekSection.createDiv("ht-dashboard-section-title").setText(`📅 ${t("last-7-days", lang)}`);
 		
@@ -168,7 +168,7 @@ export class GlobalDashboardModal extends Modal {
 
 		// --- 5. Global Activity Heatmap ---
 		const heatmapSection = contentEl.createDiv("ht-dashboard-section");
-		heatmapSection.createDiv("ht-dashboard-section-title").setText(`🔥 ${t("global-activity", lang) || "Actividad Global"}`); 
+		heatmapSection.createDiv("ht-dashboard-section-title").setText(`🔥 ${t("global-activity", lang) || "Global Activity"}`); 
 
 		const heatmapWrapper = heatmapSection.createDiv("ht-global-heatmap-wrapper");
         

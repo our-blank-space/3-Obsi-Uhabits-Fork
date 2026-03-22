@@ -16,7 +16,7 @@ export interface CreateHabitOptions {
 }
 
 export async function createHabit(storage: HabitStorage, opts: CreateHabitOptions): Promise<Habit> {
-	if (!opts.name.trim()) throw new Error("Nombre obligatorio");
+	if (!opts.name.trim()) throw new Error("Name is required");
 	const habit: Habit = {
 		id: randomHabitId(),
 		name: opts.name.trim(),
@@ -56,14 +56,14 @@ export async function restoreHabit(storage: HabitStorage, id: string) {
 }
 
 export async function deleteHabit(storage: HabitStorage, id: string) {
-	// 1. Eliminar datos físicos
-	// @ts-ignore - Acceso privado para limpieza coordinada
+	// 1. Delete physical data
+	// @ts-ignore - Private access for coordinated cleanup
 	if (storage.modular) {
 		// @ts-ignore
 		await storage.modular.deleteHabitData(id);
 	}
 	
-	// 2. Eliminar de la lista maestra
+	// 2. Remove from master list
 	await storage.update((d) => {
 		d.habits = d.habits.filter((h) => h.id !== id);
 	});

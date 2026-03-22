@@ -20,7 +20,7 @@ export class CreateHabitModal extends Modal {
     private selectedDays: number[] = [0,1,2,3,4,5,6];
     private interval: number = 1;
     private daysPerWeek: number | undefined = undefined; 
-    private anchorDay: number = 1; // Lunes por defecto
+    private anchorDay: number = 1; // Monday by default
     private lang: any;
 
 	constructor(app: App, storage: HabitStorage) {
@@ -121,9 +121,9 @@ export class CreateHabitModal extends Modal {
         const intervalContainer = contentEl.createDiv("ht-interval-days-container ht-is-hidden");
 
         let updateFrequencyUI = () => {
-            // Mostrar "Comenzar el" para Diario y Semanal
+            // Show "Starting on" for Daily and Weekly
             anchorDayContainer.toggleClass("ht-is-hidden", this.freqMode !== "daily" && this.freqMode !== "weekly");
-            // Mostrar "Intervalo" solo para Diario
+            // Show "Interval" only for Daily
             intervalContainer.toggleClass("ht-is-hidden", this.freqMode !== "daily");
             
             if (this.freqMode === "daily") {
@@ -133,7 +133,7 @@ export class CreateHabitModal extends Modal {
                 this.selectedDays = [1, 2, 3, 4, 5];
                 this.interval = 1;
             } else if (this.freqMode === "weekly") {
-                // Para semanal (1x o Nx por semana), permitimos cualquier día y limitamos por daysPerWeek
+                // For weekly (1x or Nx per week), we allow any day and limit by daysPerWeek
                 this.selectedDays = [0, 1, 2, 3, 4, 5, 6]; 
                 this.interval = 1;
                 this.daysPerWeek = this.daysPerWeek || 1;
@@ -141,7 +141,7 @@ export class CreateHabitModal extends Modal {
             }
         };
 
-        // El dropdown de Frecuencia que faltaba
+        // Frequency dropdown
         freqTypeSetting.addDropdown(dropdown => {
             dropdown.addOption("daily", t("freq-daily", lang));
             dropdown.addOption("weekdays", t("freq-weekdays", lang));
@@ -155,7 +155,7 @@ export class CreateHabitModal extends Modal {
             });
         });
 
-        // 🔥 NUEVO: Meta de Días por Semana (solo para Semanal)
+        // 🔥 NEW: Days Per Week Goal (Weekly only)
         const dpwContainer = contentEl.createDiv("ht-dpw-container ht-is-hidden");
         new Setting(dpwContainer)
             .setName(t("days-per-week", lang))
@@ -175,7 +175,7 @@ export class CreateHabitModal extends Modal {
             dpwContainer.toggleClass("ht-is-hidden", this.freqMode !== "weekly");
         };
 
-        // Intervalo de Días para Diario
+        // Day Interval for Daily
         new Setting(intervalContainer)
             .setName(t("freq-interval", lang))
             .addText(text => {
@@ -193,7 +193,7 @@ export class CreateHabitModal extends Modal {
 
         updateFrequencyUI();
 
-        // Selector visual de Tipo de Hábito
+        // Habit Type Visual Selector
 		const typeSetting = new Setting(contentEl).setName(t("type", lang)).setDesc(t("type-desc", lang));
 		const typeToggleContainer = typeSetting.controlEl.createDiv("ht-type-toggle");
 

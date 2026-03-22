@@ -27,7 +27,7 @@ export class EntryModal extends Modal {
 	private quantValue: number = 0;
 	private notes: string = "";
 
-	// Contexto
+	// Context
 	private energyValue: number = 3;
 	private moodValue: string = "";
 	private showContext: boolean = false;
@@ -42,7 +42,7 @@ export class EntryModal extends Modal {
 		this.onSave = opts.onSave;
 		this.onDelete = opts.onDelete;
 
-		// Inicializar valores
+		// Initialise values
 		if (this.habit.type === "yesno") {
 			this.yesNoValue = this.entry?.value === "✖" ? "✖" : "✔";
 		} else {
@@ -53,7 +53,7 @@ export class EntryModal extends Modal {
 		this.moodValue = this.entry?.mood ?? "";
 		this.notes = this.entry?.notes ?? "";
 
-		// Auto-expandir si ya hay datos
+		// Auto-expand if data already exists
 		if (this.entry?.notes || this.entry?.mood || this.entry?.energy) {
 			this.showContext = true;
 		}
@@ -78,16 +78,16 @@ export class EntryModal extends Modal {
         const yesterday = addDays(today, -1);
         let dateLabel = this.date;
         if (this.date === today) dateLabel = `${t("today", lang)} (${this.date})`;
-        else if (this.date === yesterday) dateLabel = `Ayer (${this.date})`; // We could add i18n for 'Yesterday'
+        else if (this.date === yesterday) dateLabel = `Yesterday (${this.date})`; 
 
 		subHeader.createSpan({ cls: "ht-entry-date", text: dateLabel });
 
-		// Feedback visual
+		// Visual feedback
 		const ev = evalHabitEntry(this.habit, this.entry);
 		if (ev === "OK") contentEl.addClass("ht-entry-ok");
 		else if (ev === "NO") contentEl.addClass("ht-entry-no");
 
-		// --- Input Valor ---
+		// --- Value Input ---
 		if (this.habit.type === "yesno") {
 			const row = contentEl.createDiv("ht-entry-yesno-row");
 			const btnOk = row.createEl("button", { text: "✔" });
@@ -111,7 +111,7 @@ export class EntryModal extends Modal {
 				});
 		}
 
-		// --- Contexto (Opcional/Colapsable) ---
+		// --- Context (Optional/Collapsible) ---
 		const contextToggle = contentEl.createEl("button", { 
 			text: this.showContext ? t("entry-hide-details", lang) : t("entry-show-details", lang), 
 			cls: "ht-btn ht-context-toggle" 
@@ -148,7 +148,7 @@ export class EntryModal extends Modal {
 			};
 		});
 
-		// --- Observaciones ---
+		// --- Observations ---
 		new Setting(contextArea).setName(t("entry-notes", lang))
 			.addTextArea((text: TextAreaComponent) => {
 				text.setPlaceholder(t("entry-placeholder", lang))
@@ -179,7 +179,7 @@ export class EntryModal extends Modal {
 		const btnSave = footer.createEl("button", { text: t("save", lang), cls: "mod-cta" });
 		btnSave.onclick = () => this.submit();
 
-        // Keyboard Shortcut general (si no está en el textarea)
+        // General Keyboard Shortcut (if not in textarea)
         const kbHandler = (e: KeyboardEvent) => {
             if (e.key === "Enter" && !(e.target instanceof HTMLTextAreaElement)) {
                 e.preventDefault();
@@ -198,7 +198,7 @@ export class EntryModal extends Modal {
         const val = this.habit.type === "yesno" ? this.yesNoValue : this.quantValue;
         const s = this.storage.getData().settingsSnapshot;
 
-        // Mapeo de settings
+        // Settings mapping
         const noteSettings: NoteSettings = {
             folder: s.notesFolder || "Habit Logs",
             filenamePattern: s.noteFilenamePattern,
@@ -207,7 +207,7 @@ export class EntryModal extends Modal {
             askBeforeCreate: s.askBeforeCreateNote
         };
 
-        // Actualizar/Crear Log Mensual
+        // Update/Create Monthly Log
         const notePath = await createHabitNote(this.app, noteSettings, this.habit, this.date, String(val), this.notes, this.moodValue, this.lang);
 
         await setEntry(this.storage, this.habit.id, this.date, val, notePath, {

@@ -3,7 +3,7 @@ import { Habit, HabitEntry, HabitEval, HabitEntries } from "./types";
 import { todayString, toDateOnly, getStartOfISOWeek, addDays } from "../utils/dates";
 
 /* ============================================
-   Evaluación de entradas (sin cambios)
+   Entry Evaluation
 ============================================ */
 
 export function evalHabitEntry(habit: Habit, entry?: HabitEntry): HabitEval {
@@ -16,7 +16,7 @@ export function evalHabitEntry(habit: Habit, entry?: HabitEntry): HabitEval {
     } else {
         if (typeof entry.value !== "number") return "NONE";
         
-        // Si no hay meta, evaluamos por presencia de valor > 0
+        // If no goal, evaluate by presence of value > 0
         if (!habit.goal) {
             return entry.value > 0 ? "OK" : "NO";
         }
@@ -32,17 +32,17 @@ export function evalHabitEntry(habit: Habit, entry?: HabitEntry): HabitEval {
 }
 
 /**
- * Evaluación sobre una fecha específica.
- * Requiere el objeto HabitEntries cargado.
+ * Evaluation for a specific date.
+ * Requires the HabitEntries object to be loaded.
  */
 export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: HabitEntries): HabitEval {
     const entry = entries.entries[date];
     const basic = evalHabitEntry(habit, entry);
-    // Si ya está completado ("OK"), lo mostramos siempre.
+    // If already completed ("OK"), we always show it.
     if (basic === "OK") return "OK";
 
-    // --- LÓGICA DE FRECUENCIA ---
-    // Evaluamos primero la frecuencia para rechazar días en los que el hábito no aplica.
+    // --- FREQUENCY LOGIC ---
+    // First evaluate frequency to reject days where the habit doesn't apply.
     const freq = habit.frequency || { mode: "daily" };
 
     if (freq.mode === "weekdays") {
@@ -50,13 +50,13 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
         const day = dObj.getDay(); 
         if (day === 0 || day === 6) return "OFF"; 
     } else if (freq.mode === "daily" && freq.interval && freq.interval > 1) {
-        // Lógica de "Cada N días" con Ancla
+        // "Every N days" logic with Anchor
         const createdRaw = habit.createdAt || todayString();
         const createdStr = createdRaw.slice(0, 10);
         const targetD = toDateOnly(date);
         const startD = toDateOnly(createdStr);
         
-        // Ajustar startD al anchorDay anterior más cercano si existe
+        // Adjust startD to the nearest previous anchorDay if it exists
         if (freq.anchorDay !== undefined) {
              const currentDay = startD.getDay();
              const diffToAnchor = (currentDay - freq.anchorDay + 7) % 7;
@@ -68,7 +68,7 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
         
         if (Math.abs(daysSince) % freq.interval !== 0) return "OFF";
     } else if (freq.mode === "weekly" && freq.days && freq.days.length > 0) {
-        // Lógica de Semanal con Intervalo de Semanas (Every N weeks)
+        // Weekly Logic with Week Interval (Every N weeks)
         const dObj = toDateOnly(date);
         const day = dObj.getDay();
         if (!freq.days.includes(day)) return "OFF";
@@ -77,7 +77,7 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
             const createdRaw = habit.createdAt || todayString();
             const createdStr = createdRaw.slice(0, 10);
             const startD = toDateOnly(createdStr);
-            // Anclamos al inicio de la semana de creación (Lunes=1)
+            // Anchor to the start of the creation week (Monday=1)
             const currentDay = startD.getDay() || 7; 
             startD.setDate(startD.getDate() - (currentDay - 1));
 
@@ -101,22 +101,22 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
         }
         
         if (isDPW && freq.daysPerWeek !== undefined && completedInWeek >= freq.daysPerWeek) {
-            // Si ya se alcanzó la meta semanal y este día no tiene registro "OK", se bloquea.
+            // If weekly goal is already met and this day has no "OK" record, it's blocked.
             const currentEntry = entries.entries[date];
             if (!currentEntry || (currentEntry.value !== "✔" && !(typeof currentEntry.value === "number" && currentEntry.value > 0))) {
-                return "OFF"; // Esto muestra la x sutil
+                return "OFF"; // This shows the subtle x
             }
         }
     }
 
     const today = todayString();
     
-    // Si la fecha es futura, no evaluamos aún
+    // If date is in the future, don't evaluate yet
     if (date > today) return "NONE";
 
     const created = habit.createdAt ? habit.createdAt.slice(0, 10) : "";
     
-    // Si la fecha es anterior a la creación, pero la creación no es en el futuro respecto a hoy
+    // If date is before creation, but creation isn't in the future relative to today
     if (created && date < created && created <= today) return "OFF";
 
     if (date < today) {
@@ -125,20 +125,20 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
             return "OK";
         }
 
-        // Si es una meta semanal (DPW), verificamos si aún se podía cumplir la meta en esa semana
+        // If it's a weekly goal (DPW), check if it was still possible to meet the goal in that week
         if (isDPW && freq.daysPerWeek !== undefined) {
             const endOfWeek = addDays(startOfWeek, 6);
             if (endOfWeek < today) {
-                // Semana pasada completamente: si no se cumplió la meta, mostramos fallo SOLO el Domingo
+                // Last week completely: if goal wasn't met, show failure ONLY on Sunday
                 if (completedInWeek < freq.daysPerWeek) {
                     const dObj = toDateOnly(date);
-                    if (dObj.getDay() === 0) return "NO"; // Domingo
+                    if (dObj.getDay() === 0) return "NO"; // Sunday
                     return "OFF";
                 }
                 return "NONE"; 
             } else {
-                // Semana actual: si no se ha cumplido la meta, el día pasado no es un fallo todavía
-                // SIEMPRE QUE aún haya días suficientes en el resto de la semana (desde hoy en adelante)
+                // Current week: if goal hasn't been met yet, past day isn't a failure yet
+                // AS LONG AS there are still enough days in the rest of the week (from today onwards)
                 let remainingDaysInWeek = 0;
                 for (let i = 0; i < 7; i++) {
                     const dStr = addDays(startOfWeek, i);
@@ -146,9 +146,9 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
                 }
 
                 if (completedInWeek + remainingDaysInWeek >= freq.daysPerWeek) {
-                    return "NONE"; // Se ve vacío/limpio
+                    return "NONE"; // Looks empty/clean
                 } else {
-                    return "NO"; // Ya es imposible cumplir la meta, mostrar fallo
+                    return "NO"; // Already impossible to meet goal, show failure
                 }
             }
         }
@@ -159,7 +159,7 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
 }
 
 /**
- * Versión asíncrona que carga los datos si es necesario.
+ * Asynchronous version that loads data if necessary.
  */
 export async function evalHabitOnDate(storage: HabitStorage, habit: Habit, date: string): Promise<HabitEval> {
     const entries = await storage.getEntries(habit.id);
@@ -167,7 +167,7 @@ export async function evalHabitOnDate(storage: HabitStorage, habit: Habit, date:
 }
 
 /* ============================================
-   🔥 EXTENSIÓN: setEntry ahora soporta energía + ánimo
+   🔥 EXTENSION: setEntry now supports energy + mood
 ============================================ */
 
 interface EntryExtraFields {
@@ -186,7 +186,7 @@ export async function setEntry(
 ) {
     const entriesData = await storage.getEntries(habitId);
 
-    // Mantener datos previos si existen
+    // Keep previous data if it exists
     const prev = entriesData.entries[date] ?? {};
 
     entriesData.entries[date] = {
@@ -202,7 +202,7 @@ export async function setEntry(
 }
 
 /* ============================================
-   Helpers auxiliares
+   Auxiliary Helpers
 ============================================ */
 
 export async function deleteEntry(storage: HabitStorage, habitId: string, date: string) {
