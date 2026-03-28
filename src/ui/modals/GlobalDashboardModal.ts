@@ -146,9 +146,8 @@ export class GlobalDashboardModal extends Modal {
 
 		for (let d = from; compareDateStr(d, to) <= 0; d = addDays(d, 1)) {
 			if (compareDateStr(d, today) > 0) break;
-			for (const h of activeHabits) {
-				const entries = await this.storage.getEntries(h.id);
-				const ev = evalHabitOnDateWithEntries(h, d, entries);
+			for (const item of entriesMap) {
+				const ev = evalHabitOnDateWithEntries(item.habit, d, item.entries);
 				if (ev !== "NONE" && ev !== "OFF") {
 					totalPossible++;
 					if (ev === "OK") totalOkWeek++;

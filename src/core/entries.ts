@@ -50,7 +50,8 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
         if (day === 0 || day === 6) return "OFF"; 
     } else if (freq.mode === "daily" && freq.interval && freq.interval > 1) {
         // Lógica de "Cada N días" con Ancla
-        const createdStr = habit.createdAt.slice(0, 10);
+        const createdRaw = habit.createdAt || todayString();
+        const createdStr = createdRaw.slice(0, 10);
         const targetD = toDateOnly(date);
         const startD = toDateOnly(createdStr);
         
@@ -72,7 +73,8 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
         if (!freq.days.includes(day)) return "OFF";
 
         if (freq.interval && freq.interval > 1) {
-            const createdStr = habit.createdAt.slice(0, 10);
+            const createdRaw = habit.createdAt || todayString();
+            const createdStr = createdRaw.slice(0, 10);
             const startD = toDateOnly(createdStr);
             // Anclamos al inicio de la semana de creación (Lunes=1)
             const currentDay = startD.getDay() || 7; 
@@ -96,8 +98,8 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
 
     const created = habit.createdAt ? habit.createdAt.slice(0, 10) : "";
     
-    // Si la fecha es anterior a la creación, no es clickeable
-    if (created && date < created) return "OFF";
+    // Si la fecha es anterior a la creación, pero la creación no es en el futuro respecto a hoy
+    if (created && date < created && created <= today) return "OFF";
 
     if (date < today) {
         return "NO";

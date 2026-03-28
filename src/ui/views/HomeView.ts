@@ -589,7 +589,7 @@ export class HomeView extends ItemView {
                 const ev = evalHabitOnDateWithEntries(h, d, entriesData);
                 return ev === "OK";
             }).length;
-            const pct = Math.round((count / validDaysCount) * 100);
+            const pct = validDaysCount > 0 ? Math.round((count / validDaysCount) * 100) : 0;
             return `- **${h.name}**: ${count}/${scheduledDays.length} (${pct}%)`;
         }).join("\n");
 
