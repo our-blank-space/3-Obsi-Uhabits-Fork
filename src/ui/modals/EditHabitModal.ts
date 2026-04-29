@@ -18,8 +18,10 @@ export class EditHabitModal extends Modal {
     private goalVal: number | undefined;
     private goalUnit: string;
     private goalType: GoalType;
-    private freqMode: any;
-    private daysPerWeek: number;
+    private freqMode: string;
+    private selectedDays: number[];
+    private interval: number;
+    private anchorDay: number;
     private lang: any;
 
 	constructor(app: App, storage: HabitStorage, habit: Habit, onSaved: () => void) {
@@ -37,8 +39,12 @@ export class EditHabitModal extends Modal {
         this.goalVal = this.habit.goal?.value;
         this.goalUnit = this.habit.goal?.unit || "";
         this.goalType = this.habit.goal?.type || "atLeast";
-        this.freqMode = this.habit.frequency?.mode || "daily";
-        this.daysPerWeek = this.habit.frequency?.daysPerWeek || 1;
+        
+        this.freqMode = (this.habit.frequency?.mode as any) || "daily";
+        const oldInt = this.habit.frequency?.interval;
+        this.interval = typeof oldInt === "number" ? oldInt : 1;
+        this.selectedDays = this.habit.frequency?.days || [0,1,2,3,4,5,6];
+        this.anchorDay = this.habit.frequency?.anchorDay ?? 1;
 	}
 
 	onOpen(): void {
@@ -117,60 +123,70 @@ export class EditHabitModal extends Modal {
 			.addText(text => text.setPlaceholder(t("icon-placeholder", lang)).setValue(this.icon).onChange(v => this.icon = v));
 
 		// --- FREQUENCY SELECTION ---
-		const freqSetting = new Setting(contentEl).setName(t("frequency", lang)).setDesc(t("frequency-desc", lang));
-        freqSetting.controlEl.style.position = "relative";
-
-        const freqOptions = [
-            { value: "daily", label: t("freq-daily", lang) },
-            { value: "weekdays", label: t("freq-weekdays", lang) },
-            { value: "weekly", label: t("freq-weekly", lang) },
-            { value: "custom", label: t("freq-custom", lang) }
-        ];
-
-        const initialFreqLabel = freqOptions.find(o => o.value === this.freqMode)?.label || t("freq-daily", lang);
-        const freqBtn = freqSetting.controlEl.createEl("button", { cls: "ht-fake-select", text: initialFreqLabel });
-        const freqSuggester = freqSetting.controlEl.createDiv("ht-category-suggester ht-is-hidden");
+		new Setting(contentEl).setHeading().setName(t("frequency", lang));
         
-        freqOptions.forEach(opt => {
-            const item = freqSuggester.createDiv("ht-suggester-item");
-            item.setText(opt.label);
-            item.onclick = (e) => {
-                e.stopPropagation();
-                this.freqMode = opt.value as any;
-                freqBtn.setText(opt.label);
-                customFreqContainer.toggleClass("is-hidden", opt.value !== "custom");
-                freqSuggester.addClass("ht-is-hidden");
-            };
+        const freqTypeSetting = new Setting(contentEl)
+            .setName(t("type", lang))
+            .setDesc(t("frequency-desc", lang));
+
+        const anchorDayContainer = contentEl.createDiv("ht-day-selector-container ht-is-hidden");
+        const intervalContainer = contentEl.createDiv("ht-interval-days-container ht-is-hidden");
+
+        const updateFrequencyUI = () => {
+            // Mostrar "Comenzar el" para Diario y Semanal
+            anchorDayContainer.toggleClass("ht-is-hidden", this.freqMode !== "daily" && this.freqMode !== "weekly");
+            // Mostrar "Intervalo" solo para Diario
+            intervalContainer.toggleClass("ht-is-hidden", this.freqMode !== "daily");
+            
+            if (this.freqMode === "daily") {
+                this.selectedDays = [0, 1, 2, 3, 4, 5, 6];
+                this.renderAnchorSelector(anchorDayContainer);
+            } else if (this.freqMode === "weekdays") {
+                this.selectedDays = [1, 2, 3, 4, 5];
+                this.interval = 1;
+            } else if (this.freqMode === "weekly") {
+                this.selectedDays = [this.anchorDay];
+                this.interval = 1;
+                this.renderAnchorSelector(anchorDayContainer);
+            }
+
+            const intervalSettingName = this.freqMode === "daily" ? t("freq-interval", lang) : t("frequency", lang);
+            intervalContainer.querySelector(".setting-item-name")?.setText(intervalSettingName);
+        };
+
+        freqTypeSetting.addDropdown(dropdown => {
+            dropdown.addOption("daily", t("freq-daily", lang));
+            dropdown.addOption("weekdays", t("freq-weekdays", lang));
+            dropdown.addOption("weekly", t("freq-weekly", lang));
+            dropdown.setValue(this.freqMode);
+            dropdown.onChange(v => {
+                this.freqMode = v;
+                updateFrequencyUI();
+            });
         });
 
-        freqBtn.onclick = (e) => {
-            e.preventDefault(); e.stopPropagation();
-            freqSuggester.classList.toggle("ht-is-hidden");
-        };
+        new Setting(intervalContainer)
+            .setName(t("freq-interval", lang))
+            .addText(text => {
+                text.setValue(String(this.interval))
+                    .onChange(v => {
+                        const n = Number(v);
+                        this.interval = isNaN(n) || n < 1 ? 1 : n;
+                    });
+                text.inputEl.type = "number";
+            })
+            .then(s => {
+                s.descEl.setText(t("days-label", lang));
+            });
 
-        const freqClickHandler = (e: MouseEvent) => {
-            if (!freqBtn.contains(e.target as Node) && !freqSuggester.contains(e.target as Node)) {
-                freqSuggester.addClass("ht-is-hidden");
-            }
-        };
-        document.addEventListener("click", freqClickHandler);
-
-		const customFreqContainer = contentEl.createDiv("ht-custom-freq-block");
-		if (this.freqMode !== "custom") customFreqContainer.addClass("is-hidden");
-
-		new Setting(customFreqContainer)
-			.setName(t("days-per-week", lang))
-			.addSlider(slider => slider
-				.setLimits(1, 6, 1)
-				.setValue(this.daysPerWeek)
-				.setDynamicTooltip()
-				.onChange(v => this.daysPerWeek = v)
-			);
+        updateFrequencyUI();
 
 		// Tipo y Meta
-		const typeContainer = contentEl.createDiv("ht-type-toggle");
-		const btnYesNo = typeContainer.createEl("button", { text: t("type-yesno", lang), cls: "hem-toggle-btn" });
-		const btnQuant = typeContainer.createEl("button", { text: t("type-quant", lang), cls: "hem-toggle-btn" });
+		const typeSetting = new Setting(contentEl).setName(t("type", lang)).setDesc(t("type-desc", lang));
+		const typeToggleContainer = typeSetting.controlEl.createDiv("ht-type-toggle");
+
+		const btnYesNo = typeToggleContainer.createEl("button", { text: t("type-yesno", lang), cls: "hem-toggle-btn" });
+		const btnQuant = typeToggleContainer.createEl("button", { text: t("type-quant", lang), cls: "hem-toggle-btn" });
 		const goalBlock = contentEl.createDiv("ht-goal-block");
 
 		new Setting(goalBlock).setName(t("goal", lang))
@@ -183,40 +199,13 @@ export class EditHabitModal extends Modal {
 			.addText(text => text.setPlaceholder(t("unit-placeholder", lang)).setValue(this.goalUnit).onChange(v => this.goalUnit = v));
 
 		const condSetting = new Setting(goalBlock).setName(t("condition", lang));
-        condSetting.controlEl.style.position = "relative";
-        
-        const condOptions = [
-            { value: "atLeast", label: t("cond-atleast", lang) },
-            { value: "atMost", label: t("cond-atmost", lang) },
-            { value: "exactly", label: t("cond-exactly", lang) }
-        ];
-        
-        const initialCondLabel = condOptions.find(o => o.value === this.goalType)?.label || t("cond-atleast", lang);
-        const condBtn = condSetting.controlEl.createEl("button", { cls: "ht-fake-select", text: initialCondLabel });
-        const condSuggester = condSetting.controlEl.createDiv("ht-category-suggester ht-is-hidden");
-        
-        condOptions.forEach(opt => {
-            const item = condSuggester.createDiv("ht-suggester-item");
-            item.setText(opt.label);
-            item.onclick = (e) => {
-                e.stopPropagation();
-                this.goalType = opt.value as GoalType;
-                condBtn.setText(opt.label);
-                condSuggester.addClass("ht-is-hidden");
-            };
+        condSetting.addDropdown(d => {
+            d.addOption("atLeast", t("cond-atleast", lang));
+            d.addOption("atMost", t("cond-atmost", lang));
+            d.addOption("exactly", t("cond-exactly", lang));
+            d.setValue(this.goalType);
+            d.onChange(v => this.goalType = v as GoalType);
         });
-
-        condBtn.onclick = (e) => {
-            e.preventDefault(); e.stopPropagation();
-            condSuggester.classList.toggle("ht-is-hidden");
-        };
-
-        const condClickHandler = (e: MouseEvent) => {
-            if (!condBtn.contains(e.target as Node) && !condSuggester.contains(e.target as Node)) {
-                condSuggester.addClass("ht-is-hidden");
-            }
-        };
-        document.addEventListener("click", condClickHandler);
 
 		const refresh = () => {
 			if (this.type === "yesno") {
@@ -234,27 +223,49 @@ export class EditHabitModal extends Modal {
 
 		// Footer
 		const footer = contentEl.createDiv("habit-modal-footer");
+        const btnCancel = footer.createEl("button", { text: t("cancel", lang) });
 		const btnSave = footer.createEl("button", { text: t("save", lang), cls: "mod-cta" });
 
+        btnCancel.onclick = () => this.close();
 		btnSave.onclick = () => this.submit();
-
-        // Keyboard Shortcut
-        const kbHandler = (e: KeyboardEvent) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                this.submit();
-            }
-        };
-        contentEl.addEventListener("keydown", kbHandler);
 
         this.onClose = () => {
             document.removeEventListener("click", clickHandler);
-            document.removeEventListener("click", freqClickHandler);
-            document.removeEventListener("click", condClickHandler);
-            contentEl.removeEventListener("keydown", kbHandler);
             contentEl.empty();
         };
 	}
+
+    private renderAnchorSelector(parent: HTMLElement) {
+        parent.empty();
+        parent.createEl("div", { text: t("freq-starting-on", this.lang), cls: "ht-day-label" });
+        const grid = parent.createDiv("ht-day-grid");
+        
+        const days = [
+            { id: 1, label: t("monday", this.lang) },
+            { id: 2, label: t("tuesday", this.lang) },
+            { id: 3, label: t("wednesday", this.lang) },
+            { id: 4, label: t("thursday", this.lang) },
+            { id: 5, label: t("friday", this.lang) },
+            { id: 6, label: t("saturday", this.lang) },
+            { id: 0, label: t("sunday", this.lang) },
+        ];
+
+        days.forEach(day => {
+            const btn = grid.createEl("button", { 
+                text: day.label.substring(0, 2), 
+                cls: "ht-day-bubble" 
+            });
+            if (this.anchorDay === day.id) btn.addClass("is-active");
+            btn.onclick = (e) => {
+                e.preventDefault();
+                this.anchorDay = day.id;
+                if (this.freqMode === "weekly") {
+                    this.selectedDays = [this.anchorDay];
+                }
+                this.renderAnchorSelector(parent);
+            };
+        });
+    }
 
     private async submit() {
         const updated = { ...this.habit };
@@ -272,16 +283,20 @@ export class EditHabitModal extends Modal {
 
         updated.frequency = {
             mode: this.freqMode as any,
-            daysPerWeek: this.freqMode === "custom" ? this.daysPerWeek : (this.freqMode === "weekly" ? 1 : undefined)
+            days: this.selectedDays,
+            interval: this.interval,
+            anchorDay: this.anchorDay
         };
 
         try {
             await updateHabit(this.storage, updated);
+            this.storage.refresh(); 
             new Notice(t("habit-updated", this.lang));
             this.onSaved();
             this.close();
         } catch (e) {
             new Notice(t("habit-update-error", this.lang));
+            console.error(e);
         }
     }
 }

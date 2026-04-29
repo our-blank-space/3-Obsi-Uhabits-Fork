@@ -5,7 +5,7 @@ export type GoalType = "atLeast" | "atMost" | "exactly";
 export type HabitSortMode = "manual" | "alpha" | "color";
 export type DayBarOrientation = "recent-right" | "recent-left";
 export type FrequencyMode = "daily" | "weekly" | "weekdays" | "custom";
-export type HabitEval = "OK" | "NO" | "NONE";
+export type HabitEval = "OK" | "NO" | "NONE" | "OFF";
 
 export const MOOD_OPTIONS = ["😫", "😔", "😑", "🙂", "🔥"] as const;
 export type MoodEmoji = typeof MOOD_OPTIONS[number];
@@ -18,7 +18,10 @@ export interface HabitGoal {
 
 export interface HabitFrequency {
     mode: FrequencyMode;
-    daysPerWeek?: number; // Para modo "weekly" o "custom"
+    daysPerWeek?: number; // legacy
+    days?: number[];      // [0-6] 0=Sun, 1=Mon...
+    interval?: number;    // Intervalo de días (Daily) o semanas (Weekly)
+    anchorDay?: number;   // Día de la semana para iniciar el ciclo (0-6)
 }
 
 // ----------

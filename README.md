@@ -40,6 +40,7 @@ Respetamos la esencia del algoritmo original para traer la mejor experiencia de 
 1.  **Crea**: Usa el botón **"+ Nuevo"** para definir tus metas.
 2.  **Registra**: Toca una celda para marcar progreso. Mantén presionado para detalles.
 3.  **Analiza**: Haz clic en el nombre del hábito para ver estadísticas avanzadas.
+4.  **Dashboard Global**: Visualiza tu mapa de calor de contribuciones globales (estilo GitHub) y rachas activas de todos tus hábitos interactuando con el ícono de estadísticas.
 
 ---
 

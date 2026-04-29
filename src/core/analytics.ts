@@ -40,8 +40,13 @@ export function computeScoreTimeline(habit: Habit, entries: HabitEntries): Score
 
     for (let d = start; compareDateStr(d, today) <= 0; d = addDays(d, 1)) {
         const ev = evalHabitOnDateWithEntries(habit, d, entries);
-        let checkValue: number | null = null;
+        
+        if (ev === "OFF") {
+            result.push({ date: d, score });
+            continue;
+        }
 
+        let checkValue: number | null = null;
         if (ev === "OK") checkValue = 1;
         else if (ev === "NO") checkValue = 0;
         else checkValue = null;
@@ -56,14 +61,32 @@ export function computeScoreTimeline(habit: Habit, entries: HabitEntries): Score
 
 export function getOverallStats(habit: Habit, entries: HabitEntries): RangeStats {
     const today = todayString();
-    const dates = Object.keys(entries.entries);
+    
+    let start = today;
+    const entryDates = Object.keys(entries.entries);
+    if (entryDates.length > 0) {
+        entryDates.sort(compareDateStr);
+        start = entryDates[0];
+    }
+    if (habit.createdAt) {
+        const created = habit.createdAt.slice(0, 10);
+        if (compareDateStr(created, start) < 0 || entryDates.length === 0) {
+            start = created;
+        }
+    }
+
     let ok = 0; let total = 0;
 
-    for (const d of dates) {
-        if (compareDateStr(d, today) > 0) continue;
+    for (let d = start; compareDateStr(d, today) <= 0; d = addDays(d, 1)) {
         const ev = evalHabitOnDateWithEntries(habit, d, entries);
+        
+        if (ev === "OFF") continue;
+
         if (ev === "OK") { ok++; total++; }
         else if (ev === "NO") { total++; }
+        else if (ev === "NONE" && compareDateStr(d, today) === 0) {
+            total++; // count today
+        }
     }
 
     const timeline = computeScoreTimeline(habit, entries);
@@ -125,7 +148,12 @@ export function buildScoreSeries(habit: Habit, entries: HabitEntries, mode: "wee
     for (const p of timeline) {
         if (compareDateStr(p.date, from) >= 0 && compareDateStr(p.date, to) <= 0) {
             labels.push(p.date.slice(5));
-            values.push(Math.round(p.score * 100));
+            const ev = evalHabitOnDateWithEntries(habit, p.date, entries);
+            if (ev === "OFF") {
+                values.push(null as any);
+            } else {
+                values.push(Math.round(p.score * 100));
+            }
         }
     }
     return { labels, values };
@@ -140,7 +168,13 @@ export function buildHistorySeries(habit: Habit, entries: HabitEntries, mode: "w
             const ev = evalHabitOnDateWithEntries(habit, d, entries);
             const ent = entries.entries[d];
             labels.push(d.slice(5));
-            values.push(habit.type === "yesno" ? (ev === "OK" ? 1 : 0) : (ent && typeof ent.value === 'number' ? ent.value : 0));
+            if (ev === "OFF") {
+                values.push(null as any);
+            } else if (habit.type === "yesno") {
+                values.push(ev === "OK" ? 1 : 0);
+            } else {
+                values.push(ent && typeof ent.value === 'number' ? ent.value : 0);
+            }
         }
     } else {
         const monthMap = new Map<string, number>();
@@ -215,11 +249,12 @@ export async function getWeekdayStatsForHabit(storage: HabitStorage, habitId: st
     ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].forEach(k => stats[k] = { ok: 0, total: 0, percent: 0 });
     if (habit) {
         Object.keys(entries.entries).forEach(d => {
-            if (evalHabitOnDateWithEntries(habit, d, entries) !== "NONE") {
+            const ev = evalHabitOnDateWithEntries(habit, d, entries);
+            if (ev === "OK" || ev === "NO") {
                 const wd = weekdayShort(d);
                 if (stats[wd]) {
                     stats[wd].total++;
-                    if (evalHabitOnDateWithEntries(habit, d, entries) === "OK") stats[wd].ok++;
+                    if (ev === "OK") stats[wd].ok++;
                 }
             }
         });

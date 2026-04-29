@@ -40,6 +40,55 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
     const basic = evalHabitEntry(habit, entry);
     if (basic !== "NONE") return basic;
 
+    // --- LÓGICA DE FRECUENCIA ---
+    // Evaluamos primero la frecuencia para rechazar días en los que el hábito no aplica.
+    const freq = habit.frequency || { mode: "daily" };
+
+    if (freq.mode === "weekdays") {
+        const dObj = toDateOnly(date);
+        const day = dObj.getDay(); 
+        if (day === 0 || day === 6) return "OFF"; 
+    } else if (freq.mode === "daily" && freq.interval && freq.interval > 1) {
+        // Lógica de "Cada N días" con Ancla
+        const createdStr = habit.createdAt.slice(0, 10);
+        const targetD = toDateOnly(date);
+        const startD = toDateOnly(createdStr);
+        
+        // Ajustar startD al anchorDay anterior más cercano si existe
+        if (freq.anchorDay !== undefined) {
+             const currentDay = startD.getDay();
+             const diffToAnchor = (currentDay - freq.anchorDay + 7) % 7;
+             startD.setDate(startD.getDate() - diffToAnchor);
+        }
+
+        const diff = targetD.getTime() - startD.getTime();
+        const daysSince = Math.round(diff / 86400000);
+        
+        if (Math.abs(daysSince) % freq.interval !== 0) return "OFF";
+    } else if (freq.mode === "weekly" && freq.days && freq.days.length > 0) {
+        // Lógica de Semanal con Intervalo de Semanas (Every N weeks)
+        const dObj = toDateOnly(date);
+        const day = dObj.getDay();
+        if (!freq.days.includes(day)) return "OFF";
+
+        if (freq.interval && freq.interval > 1) {
+            const createdStr = habit.createdAt.slice(0, 10);
+            const startD = toDateOnly(createdStr);
+            // Anclamos al inicio de la semana de creación (Lunes=1)
+            const currentDay = startD.getDay() || 7; 
+            startD.setDate(startD.getDate() - (currentDay - 1));
+
+            const diff = dObj.getTime() - startD.getTime();
+            const weeksSince = Math.floor(Math.round(diff / 86400000) / 7);
+            if (Math.abs(weeksSince) % freq.interval !== 0) return "OFF";
+        }
+    } else if (freq.days && freq.days.length > 0) {
+        // Fallback para otros modos con días específicos
+        const dObj = toDateOnly(date);
+        const day = dObj.getDay();
+        if (!freq.days.includes(day)) return "OFF";
+    }
+
     const today = todayString();
     
     // Si la fecha es futura, no evaluamos aún
@@ -47,23 +96,14 @@ export function evalHabitOnDateWithEntries(habit: Habit, date: string, entries: 
 
     const created = habit.createdAt ? habit.createdAt.slice(0, 10) : "";
     
-    // Si la fecha es anterior a la creación, no cuenta
-    if (created && date < created) return "NONE";
-
-    // --- LÓGICA DE FRECUENCIA ---
-    const freqMode = habit.frequency?.mode || "daily";
-
-    if (freqMode === "weekdays") {
-        const dObj = toDateOnly(date);
-        const day = dObj.getDay(); // 0=Sun, 6=Sat
-        if (day === 0 || day === 6) return "NONE"; // No cuenta los findes
-    }
+    // Si la fecha es anterior a la creación, no es clickeable
+    if (created && date < created) return "OFF";
 
     if (date < today) {
         return "NO";
     }
 
-    return basic;
+    return "NONE";
 }
 
 /**

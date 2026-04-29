@@ -180,19 +180,24 @@ export class HomeView extends ItemView {
 
         // --- PROGRESS BAR ---
         if (settings.showDailyProgress) {
-            const completedToday = habits.filter(h => {
+            const scheduledTodayHabits = allActiveHabits.filter(h => {
+                const entries = this.storage.getEntriesSync(h.id);
+                return evalHabitOnDateWithEntries(h, today, entries) !== "OFF";
+            });
+
+            const completedToday = scheduledTodayHabits.filter(h => {
                 const entries = this.storage.getEntriesSync(h.id);
                 return evalHabitOnDateWithEntries(h, today, entries) === "OK";
             }).length;
             
-            const allVisibleCount = data.habits.filter(h => !h.archived).length;
+            const totalScheduled = scheduledTodayHabits.length;
             const progressContainer = titleBlock.createDiv("ht-daily-progress-container");
-            const total = allVisibleCount || 1;
+            const total = totalScheduled || 1;
             const percent = Math.round((completedToday / total) * 100);
             
             const progressBar = progressContainer.createDiv("ht-daily-progress-bar");
             progressBar.createDiv({ cls: "ht-daily-progress-fill", attr: { style: `width: ${percent}%` } });
-            progressContainer.createSpan({ cls: "ht-daily-progress-text", text: `${completedToday}/${allVisibleCount} ${t("today", lang)} (${percent}%)` });
+            progressContainer.createSpan({ cls: "ht-daily-progress-text", text: `${completedToday}/${totalScheduled} ${t("today", lang)} (${percent}%)` });
         }
 
         const dates: string[] = [];
@@ -398,14 +403,24 @@ export class HomeView extends ItemView {
             const cell = cellsContainer.createDiv("ht-habit-cell");
             const ev = evalHabitOnDateWithEntries(habit, date, entriesData);
             const entry = entriesData.entries[date];
+
+            if (ev === "OFF") {
+                cell.addClass("is-not-scheduled");
+                return; // No renderizar contenido para días no programados
+            }
+
             const content = cell.createDiv("ht-cell-content");
 
             if (ev === "OK") {
-                content.addClass("is-done"); content.setAttr("style", `color: ${habit.color}`); setIcon(content, "check");
+                content.addClass("is-done"); 
+                content.setAttr("style", `color: ${habit.color}`); 
+                setIcon(content, "check");
             } else if (ev === "NO") {
-                content.addClass("is-fail"); setIcon(content, "x");
+                content.addClass("is-fail"); 
+                setIcon(content, "x");
             } else if (entry && typeof entry.value === "number") {
-                content.addClass("is-done"); content.setAttr("style", `color: ${habit.color}`);
+                content.addClass("is-done"); 
+                content.setAttr("style", `color: ${habit.color}`);
                 content.createSpan({ cls: "ht-cell-value", text: String(entry.value) });
             }
             if (entry?.notePath) {
@@ -566,12 +581,16 @@ export class HomeView extends ItemView {
 
         const habitStats = habits.map(h => {
             const entriesData = this.storage.getEntriesSync(h.id);
-            const count = monthDays.filter(d => {
+            const scheduledDays = monthDays.filter(d => {
+                return evalHabitOnDateWithEntries(h, d, entriesData) !== "OFF";
+            });
+            const validDaysCount = scheduledDays.length || 1;
+            const count = scheduledDays.filter(d => {
                 const ev = evalHabitOnDateWithEntries(h, d, entriesData);
                 return ev === "OK";
             }).length;
-            const pct = Math.round((count / monthDays.length) * 100);
-            return `- **${h.name}**: ${count}/${monthDays.length} (${pct}%)`;
+            const pct = Math.round((count / validDaysCount) * 100);
+            return `- **${h.name}**: ${count}/${scheduledDays.length} (${pct}%)`;
         }).join("\n");
 
         const summary = [

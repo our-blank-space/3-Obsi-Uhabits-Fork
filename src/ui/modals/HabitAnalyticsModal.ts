@@ -221,6 +221,7 @@ export class HabitAnalyticsModal extends Modal {
 						datasets: [{
 							label: t("score", lang),
 							data: scoreData.values,
+                            spanGaps: true,
 							borderColor: this.habit.color,
 							backgroundColor: grad,
 							fill: true,

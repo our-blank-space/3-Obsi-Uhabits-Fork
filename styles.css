@@ -797,6 +797,80 @@
     color: var(--text-on-accent);
 }
 
+/* Global Dashboard Heatmap */
+.ht-global-heatmap-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--ht-border);
+}
+
+.ht-global-heatmap-body {
+    display: flex;
+    gap: 8px;
+}
+
+.ht-global-heatmap-weekdays {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: var(--ht-text-muted);
+    padding-top: 6px; 
+}
+
+.ht-global-heatmap-grid {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--background-modifier-border) transparent;
+}
+
+.ht-global-heatmap-grid::-webkit-scrollbar {
+    height: 6px;
+}
+.ht-global-heatmap-grid::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border);
+    border-radius: 10px;
+}
+
+.ht-global-heatmap-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ht-global-heatmap-box {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: var(--ht-transition-fast);
+    cursor: crosshair;
+}
+
+.theme-light .ht-global-heatmap-box {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.ht-global-heatmap-box.is-empty {
+    background: transparent !important;
+    pointer-events: none;
+}
+
+.ht-global-heatmap-box:hover:not(.is-empty) {
+    transform: scale(1.3);
+    z-index: 10;
+    border: 1px solid var(--ht-bg-main);
+}
+
 /* Utils */
 .ht-is-hidden {
     display: none !important;
@@ -1634,4 +1708,76 @@
     .habit-tracker-root .ht-main {
         margin: 0 -8px; /* Slightly expand to use more horizontal space */
     }
+}
+
+/* --- New Frequency Selection UI --- */
+.ht-day-selector-container {
+    padding: 12px 0;
+    width: 100%;
+}
+
+.ht-day-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ht-text-muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ht-day-grid {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.ht-day-bubble {
+    flex: 1;
+    height: 48px !important;
+    border-radius: 12px !important;
+    background: var(--background-modifier-hover) !important;
+    border: 1px solid var(--ht-border) !important;
+    color: var(--ht-text-muted) !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.ht-day-bubble:hover {
+    border-color: var(--ht-accent) !important;
+    color: var(--ht-text-main) !important;
+}
+
+.ht-day-bubble.is-active {
+    background: var(--ht-accent) !important;
+    color: var(--ht-on-accent) !important;
+    border-color: var(--ht-accent) !important;
+    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--ht-accent) 40%, transparent) !important;
+}
+
+/* --- Inactive Days Grid Rendering --- */
+.ht-habit-cell.is-not-scheduled {
+    background: transparent !important;
+    cursor: default !important;
+}
+
+.ht-habit-cell.is-not-scheduled .ht-cell-content {
+    display: none !important;
+}
+
+/* Visual dot for not-scheduled days (optional) */
+.ht-habit-cell.is-not-scheduled::after {
+    content: "✕";
+    color: var(--ht-border);
+    font-size: 1.25rem;
+    opacity: 0.15;
+}
+
+.ht-interval-container {
+    margin-top: 12px;
+    width: 100%;
 }

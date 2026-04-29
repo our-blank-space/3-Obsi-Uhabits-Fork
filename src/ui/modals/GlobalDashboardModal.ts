@@ -3,8 +3,8 @@ import { HabitStorage } from "../../core/storage";
 import { todayString, addDays, getRangeBounds, compareDateStr } from "../../utils/dates";
 import { evalHabitOnDateWithEntries } from "../../core/entries";
 import { getStreakInfoForHabit } from "../../core/analytics";
-import { Habit } from "../../core/types";
-import { t } from "../../i18n";
+import { Habit, HabitEntries } from "../../core/types";
+import { t, translations } from "../../i18n";
 
 export class GlobalDashboardModal extends Modal {
 	private storage: HabitStorage;
@@ -35,20 +35,23 @@ export class GlobalDashboardModal extends Modal {
 		// --- 1. Progress Ring ---
 		const today = todayString();
 		let okToday = 0;
-		const entriesMap: { habit: Habit, streak: number }[] = [];
+		let scheduledTodayCount = 0;
+		const entriesMap: { habit: Habit, streak: number, entries: HabitEntries }[] = [];
 
 		const promises = activeHabits.map(async (h) => {
 			const entries = await this.storage.getEntries(h.id);
 			const ev = evalHabitOnDateWithEntries(h, today, entries);
+			if (ev !== "OFF") scheduledTodayCount++;
 			if (ev === "OK") okToday++;
 			const info = await getStreakInfoForHabit(this.storage, h.id);
-			return { habit: h, streak: info.currentStreak };
+			return { habit: h, streak: info.currentStreak, entries };
 		});
 
 		const results = await Promise.all(promises);
 		results.forEach(r => entriesMap.push(r));
 
-		const todayPercent = Math.round((okToday / activeHabits.length) * 100) || 0;
+		const denom = scheduledTodayCount > 0 ? scheduledTodayCount : 1;
+		const todayPercent = Math.round((okToday / denom) * 100) || 0;
 		const circumference = 2 * Math.PI * 58;
 		const offset = circumference - (circumference * todayPercent) / 100;
 
@@ -82,7 +85,7 @@ export class GlobalDashboardModal extends Modal {
 		ringInfo.createDiv("ht-ring-label").setText(t("completed-today", lang));
 		
 		const ringSubtext = ringCard.createDiv("ht-ring-subtext");
-		ringSubtext.setText(`${okToday} / ${activeHabits.length} ${t("habits-completed-summary", lang)}`);
+		ringSubtext.setText(`${okToday} / ${scheduledTodayCount} ${t("habits-completed-summary", lang)}`);
 
 		// --- 2. Stats Cards Row ---
 		const statsRow = contentEl.createDiv("ht-dashboard-stats-row");
@@ -146,7 +149,7 @@ export class GlobalDashboardModal extends Modal {
 			for (const h of activeHabits) {
 				const entries = await this.storage.getEntries(h.id);
 				const ev = evalHabitOnDateWithEntries(h, d, entries);
-				if (ev !== "NONE") {
+				if (ev !== "NONE" && ev !== "OFF") {
 					totalPossible++;
 					if (ev === "OK") totalOkWeek++;
 				}
@@ -163,6 +166,90 @@ export class GlobalDashboardModal extends Modal {
 		const weekMeta = weekCard.createDiv("ht-week-meta");
 		weekMeta.createSpan({ cls: "ht-week-percent", text: `${weekPercent}%` });
 		weekMeta.createSpan({ cls: "ht-week-label", text: `${totalOkWeek} / ${totalPossible} ${t("consistency-summary", lang)}` });
+
+		// --- 5. Global Activity Heatmap ---
+		const heatmapSection = contentEl.createDiv("ht-dashboard-section");
+		heatmapSection.createDiv("ht-dashboard-section-title").setText(`🔥 ${t("global-activity", lang) || "Actividad Global"}`); 
+
+		const heatmapWrapper = heatmapSection.createDiv("ht-global-heatmap-wrapper");
+        
+        const daysToRender = 364; // 52 weeks
+        const weeks: (string | null)[][] = [];
+        let curWeek: (string | null)[] = [];
+        
+        for (let i = daysToRender; i >= 0; i--) {
+             const d = addDays(today, -i);
+             const dObj = new Date(d + "T00:00:00");
+             const wDay = dObj.getDay();
+
+             if (curWeek.length === 0 && wDay !== 0) {
+                 for(let p=0; p<wDay; p++) {
+                     curWeek.push(null);
+                 }
+             }
+             
+             curWeek.push(d);
+             
+             if (curWeek.length === 7 || i === 0) {
+                 while(curWeek.length > 0 && curWeek.length < 7) { curWeek.push(null); }
+                 if (curWeek.length > 0) weeks.push(curWeek);
+                 curWeek = [];
+             }
+        }
+
+        const heatmapBody = heatmapWrapper.createDiv("ht-global-heatmap-body");
+        const weekdaysEl = heatmapBody.createDiv("ht-global-heatmap-weekdays");
+        
+        const lKey = lang === "auto" ? (localStorage.getItem("language") === "es" ? "es" : "en") : lang;
+        const shortLabels = (translations as any)[lKey]?.["weekday-labels-short"] || ["S","M","T","W","T","F","S"];
+
+        weekdaysEl.createSpan({text: ""}); 
+        weekdaysEl.createSpan({text: shortLabels[1] || "M"}); 
+        weekdaysEl.createSpan({text: ""}); 
+        weekdaysEl.createSpan({text: shortLabels[3] || "W"}); 
+        weekdaysEl.createSpan({text: ""}); 
+        weekdaysEl.createSpan({text: shortLabels[5] || "F"}); 
+        weekdaysEl.createSpan({text: ""}); 
+        
+		const heatmapGrid = heatmapBody.createDiv("ht-global-heatmap-grid");
+        const opacities = ["0.2", "0.4", "0.6", "0.8", "1.0"];
+        
+        weeks.forEach(week => {
+             const col = heatmapGrid.createDiv("ht-global-heatmap-col");
+             for (let i = 0; i < 7; i++) {
+                 const dayStr = week[i];
+                 if (!dayStr) {
+                     col.createDiv("ht-global-heatmap-box is-empty");
+                 } else {
+                     let completions = 0;
+                     let totalPossible = 0;
+                     entriesMap.forEach(r => {
+                          const ev = evalHabitOnDateWithEntries(r.habit, dayStr, r.entries);
+                          if (ev !== "NONE" && ev !== "OFF") {
+                               totalPossible++;
+                               if (ev === "OK") completions++;
+                          }
+                     });
+                     
+                     const box = col.createDiv("ht-global-heatmap-box");
+                     if (totalPossible > 0 && completions > 0) {
+                         const p = completions / totalPossible;
+                         let level = 0;
+                         if (p <= 0.25) level = 0;
+                         else if (p <= 0.5) level = 1;
+                         else if (p <= 0.75) level = 2;
+                         else if (p < 1.0) level = 3;
+                         else level = 4;
+                         
+                         box.style.backgroundColor = "var(--interactive-accent)";
+                         box.style.opacity = opacities[level];
+                     }
+                     box.title = `${dayStr}: ${completions} / ${totalPossible}`;
+                 }
+             }
+        });
+
+        setTimeout(() => heatmapGrid.scrollLeft = heatmapGrid.scrollWidth, 10);
 	}
 
 	onClose() {
